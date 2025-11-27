@@ -11,12 +11,15 @@
     "service_worker": "background.js",
     "type": "module"
   },
+  
   "content_scripts": [
     {
-      "matches": ["https://*/*", "http://*/*"],
-      "js": ["content.js"]
+      "matches": ["https://www.instagram.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
     }
   ],
   "permissions": ["storage", "tabs", "scripting"],
-  "host_permissions": ["http://localhost:8000/*"]
+  "host_permissions": ["http://localhost:8000/*", "https://www.instagram.com/*"]
+
 }
