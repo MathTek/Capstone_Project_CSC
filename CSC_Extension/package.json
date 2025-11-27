@@ -1,16 +1,20 @@
 {
-  "name": "svelte-app",
+  "name": "csc-extension",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite build --watch",
     "build": "vite build",
     "preview": "vite preview"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
-    "svelte": "^5.43.5",
-    "vite": "^7.2.2"
+    "svelte": "^5.43.8",
+    "vite": "^7.2.4",
+    "vite-plugin-static-copy": "^3.1.4"
+  },
+  "dependencies": {
+    "chart.js": "^4.5.1"
   }
 }
