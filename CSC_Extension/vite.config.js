@@ -34,9 +34,6 @@ export default defineConfig({
         popup: resolve(__dirname, 'src/popup.js'),
         background: resolve(__dirname, 'src/background/background.js'),
         content: resolve(__dirname, 'src/content/content.js'),
-        bioAnalyse: resolve(__dirname, 'src/content/bioAnalyse.js'),
-        postAnalyse: resolve(__dirname, 'src/content/postAnalyse.js'),
-        profileAnalyse: resolve(__dirname, 'src/content/profileAnalyse.js')
       },
       output: {
         entryFileNames: (chunkInfo) => {
