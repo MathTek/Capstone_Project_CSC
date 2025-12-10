@@ -14,7 +14,6 @@
     chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
       const currentTab = tabs[0];
       
-      // Vérifier si nous sommes sur Instagram
       if (!currentTab.url.includes('instagram.com')) {
         status.set("❌ Veuillez naviguer vers un profil Instagram");
         loading.set(false);
@@ -23,7 +22,6 @@
       
       status.set("🔄 Vérification du content script...");
       
-      // Essayer d'injecter le content script si nécessaire
       try {
         await chrome.scripting.executeScript({
           target: { tabId: currentTab.id },
@@ -34,26 +32,21 @@
         console.log("ℹ️ Content script probablement déjà présent:", error.message);
       }
       
-      // Attendre un peu pour que le script s'initialise
       setTimeout(() => {
         status.set("🔍 Extraction automatique des données du profil...");
         
-        // Configurer un timeout pour éviter l'attente infinie
         const messageTimeout = setTimeout(() => {
           console.error("⏰ Timeout: Aucune réponse du content script");
           status.set("❌ Timeout: Content script ne répond pas. Rechargez la page.");
           loading.set(false);
-        }, 10000); // 10 secondes de timeout
+        }, 10000); 
         
-        // Récupérer automatiquement toutes les données du profil
         chrome.tabs.sendMessage(
           currentTab.id,
           { action: "getFullProfile" },
           (response) => {
-            // Annuler le timeout puisqu'on a reçu une réponse
             clearTimeout(messageTimeout);
             
-            // Vérifier les erreurs de runtime
             if (chrome.runtime.lastError) {
               console.error("❌ Erreur de communication:", chrome.runtime.lastError.message);
               status.set("❌ Erreur: " + chrome.runtime.lastError.message);
@@ -64,7 +57,6 @@
             console.log("📦 Full profile data received:", response);
             
             if (response) {
-              // Vérifier s'il y a une erreur dans la réponse
               if (response.error) {
                 console.error("❌ Erreur du content script:", response.error);
                 status.set("❌ Erreur: " + response.error);
@@ -72,13 +64,10 @@
                 return;
               }
               
-              // Mettre à jour la bio
               bio.set(response.bio || "Aucune bio trouvée");
               
-              // Mettre à jour les posts
               posts.set(response.posts || []);
               
-              // Mettre à jour les infos du profil
               profileInfo.set({
                 username: response.username,
                 followers: response.followers,
@@ -87,7 +76,6 @@
                 url: response.url
               });
               
-              // Mettre à jour le statut
               const postsCount = (response.posts || []).length;
               const bioStatus = response.bio ? '✓ Bio' : '✗ Bio';
               status.set(`✅ Extraction terminée: ${bioStatus}, ${postsCount} posts trouvés`);
@@ -99,11 +87,10 @@
             loading.set(false);
           }
         );
-      }, 1500); // Délai un peu plus long pour l'initialisation
+      }, 1500);
     });
   });
 
-  // Fonction pour forcer une nouvelle extraction
   async function refreshData() {
     loading.set(true);
     status.set("🔄 Nouvelle extraction en cours...");
@@ -113,7 +100,6 @@
     chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
       const currentTab = tabs[0];
       
-      // Re-injecter le content script pour être sûr
       try {
         await chrome.scripting.executeScript({
           target: { tabId: currentTab.id },
@@ -124,9 +110,7 @@
         console.log("ℹ️ Content script déjà présent");
       }
       
-      // Attendre un peu puis envoyer le message
       setTimeout(() => {
-        // Timeout pour éviter l'attente infinie
         const refreshTimeout = setTimeout(() => {
           console.error("⏰ Refresh timeout");
           status.set("❌ Timeout lors du rafraîchissement");
@@ -139,7 +123,6 @@
           (response) => {
             clearTimeout(refreshTimeout);
             
-            // Vérifier les erreurs de runtime
             if (chrome.runtime.lastError) {
               console.error("❌ Erreur de communication:", chrome.runtime.lastError.message);
               status.set("❌ Erreur: " + chrome.runtime.lastError.message);
@@ -148,7 +131,6 @@
             }
             
             if (response) {
-              // Vérifier erreur dans la réponse
               if (response.error) {
                 console.error("❌ Erreur du content script:", response.error);
                 status.set("❌ Erreur: " + response.error);
@@ -179,7 +161,6 @@
     });
   }
 
-  // Fonction pour recharger la page Instagram
   function reloadInstagramPage() {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       chrome.tabs.reload(tabs[0].id, () => {
@@ -189,7 +170,6 @@
     });
   }
 
-  // Fonction de debug pour analyser la page
   function debugPage() {
     status.set("🔧 Analyse de la structure de la page...");
     
@@ -220,7 +200,6 @@
 <div class="w-full max-w-md mx-auto min-h-screen bg-gradient-to-br from-blue-400 via-purple-500 to-indigo-600 p-2">
   <div class="bg-base-100/95 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden space-y-4">
     
-    <!-- Header avec statut -->
     <div class="bg-gradient-to-r from-primary to-secondary p-4 text-white">
       <h1 class="font-bold text-lg">🔍 CSC Instagram Analyzer</h1>
       <p class="text-xs opacity-90">{$status}</p>
@@ -235,7 +214,6 @@
     </div>
 
     <div class="px-4 pb-4 space-y-4">
-      <!-- Loading indicator -->
       {#if $loading}
         <div class="flex items-center justify-center p-4">
           <span class="loading loading-spinner loading-md"></span>
@@ -243,7 +221,6 @@
         </div>
       {/if}
 
-      <!-- Action buttons -->
       <div class="flex gap-1 justify-center flex-wrap">
         <button class="btn btn-sm btn-outline" on:click={refreshData} disabled={$loading}>
           🔄 Actualiser
@@ -256,7 +233,6 @@
         </button>
       </div>
 
-      <!-- Section Bio -->
       <div class="card bg-base-100 shadow-lg">
         <div class="card-body p-4">
           <h2 class="card-title text-sm mb-3">📋 Bio Instagram</h2>
@@ -266,7 +242,6 @@
         </div>
       </div>
 
-      <!-- Section Posts -->
       <div class="card bg-base-100 shadow-lg">
         <div class="card-body p-4">
           <h2 class="card-title text-sm mb-3">
@@ -301,7 +276,6 @@
         </div>
       </div>
 
-      <!-- Summary -->
       {#if !$loading && ($bio !== "Aucune bio trouvée" || $posts.length > 0)}
         <div class="card bg-success/10 shadow-lg">
           <div class="card-body p-4">
