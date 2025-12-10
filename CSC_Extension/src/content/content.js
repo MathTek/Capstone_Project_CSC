@@ -1,34 +1,101 @@
 console.log("🚀 CSC Extension Content Script loaded");
 
-
 function getInstagramBio() {
-  console.log("🔍 Searching for Instagram bio...");
-  
-  
-  const bioSelectors = [
-    'header section > div:last-child', 
-    'header section div[dir="auto"]', 
-    'header section span[dir="auto"]', 
-    'header div[data-testid*="bio"]', 
-    'header section div:nth-child(3)', 
-    'header section > div > div > div', 
-  ];
+    console.log("🔍 Searching for Instagram bio with GENERIC approach...");
 
-  for (let selector of bioSelectors) {
-    const elements = [...document.querySelectorAll(selector)];
-    for (let el of elements) {
-      const text = el.innerText?.trim();
-      if (text && text.length > 10 && 
-          !text.match(/abonnés|followers|following|publications|posts|^@/i) &&
-          !text.match(/^\d+$/)) {
-        console.log("✅ Bio found:", text);
-        return text;
-      }
+    const allElements = [...document.querySelectorAll('header *')];
+    const textData = allElements
+        .map(el => ({
+            text: el.textContent?.trim(),
+            element: el,
+            tagName: el.tagName,
+            parent: el.parentElement?.tagName,
+            hasDirectText: el.childNodes.length === 1 && el.childNodes[0].nodeType === 3,
+            isLeaf: el.children.length === 0,
+            position: Array.from(el.parentElement?.children || []).indexOf(el)
+        }))
+        .filter(data => data.text && data.text.length > 0);
+
+    console.log(`🔍 Found ${textData.length} text elements in header`);
+
+    const scoredTexts = textData.map(data => {
+        let score = 0;
+        const text = data.text;
+
+        if (text.length >= 20 && text.length <= 300) score += 10;
+        if (text.includes(' ') && text.split(' ').length >= 2) score += 5;
+        if (data.isLeaf) score += 3;
+        if (data.hasDirectText) score += 2;
+        if (text.match(/[.!?]$/)) score += 2;
+        if (text.includes('\n') || text.includes('  ')) score += 1;
+
+        if (text.match(/^@[\w\.]+$/i)) score -= 20;
+        if (text.match(/^\d+$/)) score -= 15;
+        if (text.match(/^(modifier|edit|suivre|follow|message|partager|share|voir|see|afficher|show)$/i)) score -= 10;
+        if (text.match(/(abonnés|followers|publications|posts|suivis|following)/i)) score -= 8;
+        if (text.match(/^(note|notes?\.{3}|\.{3}|•|▪|→|\.\.\.)$/i)) score -= 12;
+        if (text.length < 5) score -= 10;
+        if (text.length > 500) score -= 5;
+        if (text === text.toUpperCase() && text.length > 10) score -= 3;
+
+        if (text.match(/[a-z][A-Z]/)) score -= 5;
+        if (text.match(/\w{3,}[A-Z]\w/)) score -= 8;
+        if (text.split(/[A-Z]/).length > 4) score -= 10;
+
+        return { ...data, score, originalText: text };
+    });
+
+    const sortedCandidates = scoredTexts
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 15);
+
+    console.log("🏆 Top candidates with scores:");
+    sortedCandidates.forEach((candidate, i) => {
+        console.log(`  ${i + 1}. [Score: ${candidate.score}] "${candidate.text.substring(0, 80)}..."`);
+    });
+
+    let selectedBio = null;
+
+    const bestCandidate = sortedCandidates.find(c => c.score > 0);
+    
+    if (bestCandidate) {
+        selectedBio = bestCandidate.text;
+        console.log(`✅ Selected bio with score ${bestCandidate.score}:`, selectedBio.substring(0, 100) + '...');
+    } else {
+        const leastBad = sortedCandidates[0];
+        if (leastBad && leastBad.score > -10) {
+            selectedBio = leastBad.text;
+            console.log(`⚠️ Fallback selection with score ${leastBad.score}:`, selectedBio.substring(0, 100) + '...');
+        }
     }
-  }
-  
-  return null;
+
+    if (!selectedBio) {
+        console.log("❌ No suitable bio found");
+        return null;
+    }
+
+    let cleanedBio = selectedBio
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    if (cleanedBio.length > 100 && cleanedBio.match(/[a-z][A-Z]|[a-zA-Z][0-9]|[0-9][a-zA-Z]/)) {
+        console.log("🔧 Attempting to clean concatenated text...");
+        
+        cleanedBio = cleanedBio
+            .replace(/([a-z])([A-Z][a-z])/g, '$1 $2')
+            .replace(/([a-zA-Z])(\d)/g, '$1 $2')
+            .replace(/(\d)([a-zA-Z])/g, '$1 $2')
+            .replace(/([.!?])([A-Z])/g, '$1 $2')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    console.log(`✅ Final cleaned bio:`, cleanedBio);
+    return cleanedBio;
 }
+
+
 
 async function getAllProfilePosts() {
   console.log("🔍 Searching for ALL posts (posts + reels + tv)...");
