@@ -32,90 +32,83 @@ function getInstagramBio() {
 }
 
 // === FONCTION POUR RÉCUPÉRER TOUS LES POSTS DU PROFIL ===
-function getAllProfilePosts() {
-  console.log("🔍 Searching for all posts in profile...");
-  
-  const posts = [];
-  
-  // Sélecteurs pour les posts dans la grille du profil
-  const postGridSelectors = [
-    'article', // Articles (posts)
-    'div[role="button"] img[alt]', // Images avec alt (descriptions)
-    'a[href*="/p/"] img[alt]', // Liens vers posts avec images
-    'div._ac7v img[alt]', // Nouveau format de grille
-  ];
+async function getAllProfilePosts() {
+  console.log("🔍 Searching for ALL posts (posts + reels + tv)...");
 
-  // Récupérer les posts de la grille
-  const gridItems = document.querySelectorAll('a[href*="/p/"]');
-  
-  gridItems.forEach((item, index) => {
-    const img = item.querySelector('img');
-    const altText = img?.alt || '';
+  const posts = [];
+  const collected = document.querySelectorAll(
+    'a[href*="/p/"], a[href*="/reel/"], a[href*="/tv/"]'
+  );
+
+
+  let index = 1;
+
+  for (const item of collected) {
     const href = item.href;
     
-    // Filtrer les alts qui contiennent du contenu utile
-    if (altText && altText.length > 10 && 
-        !altText.match(/^(Photo de|Photo by|Image may contain)/i) &&
-        !altText.match(/^\d+\s*(j'aime|likes)/i)) {
-      
-      posts.push({
-        content: altText,
-        url: href,
-        index: index + 1,
-        type: 'grid_post'
-      });
-      
-      console.log(`📝 Post ${index + 1} found:`, altText.substring(0, 100) + '...');
-    }
-  });
 
-  // Si on est sur un post individuel, récupérer aussi son contenu
-  if (window.location.href.includes('/p/')) {
-    const postContent = getSinglePostContent();
-    if (postContent) {
-      posts.unshift({
-        content: postContent,
-        url: window.location.href,
-        index: 0,
-        type: 'individual_post'
-      });
-    }
+    posts.push({
+      content: null, // sera rempli par getSinglePostContent()
+      url: href,
+      index: index++,
+      type: href.includes("/reel/") ? "reel" : href.includes("/tv/") ? "video" : "post"
+    });
   }
 
-  console.log(`✅ Found ${posts.length} posts total`);
+//   console.log(`📍 Total found: ${posts.length}`);
   return posts;
 }
+
 
 // === FONCTION POUR UN POST INDIVIDUEL ===
 function getSinglePostContent() {
   const postSelectors = [
-    'article div[data-testid="post-text"]',
-    'article span[dir="auto"]',
-    'article div:not([role]) span',
+    'div[data-testid="post-comment-root"] span[dir="auto"]',
+    'div[data-testid="caption"] span',
     'article h1',
-    'div[data-testid="caption"] span'
+    'article span[dir="auto"]',
+    'header + div span[dir="auto"]',
+    'section article ul li div div span'
   ];
 
   for (let selector of postSelectors) {
-    const elements = [...document.querySelectorAll(selector)];
-    for (let el of elements) {
-      const text = el.innerText?.trim();
-      if (text && text.length > 10 && 
-          !text.match(/^(j'aime|like|comment|partager|il y a)/i)) {
-        return text;
-      }
+    const el = document.querySelector(selector);
+    if (el && el.innerText && el.innerText.trim().length > 5) {
+      return el.innerText.trim();
     }
   }
-  return null;
+
+  return "(No caption found)";
 }
 
+async function fetchFullPostsDetails(posts) {
+  for (let post of posts) {
+    
+    const elements = [...document.querySelectorAll('a[href*="/p/"], a[href*="/reel/"], a[href*="/tv/"]')];
+    const el = elements.find(a => a.href.includes(post.url));
+    
+    if (el) {
+      el.click();
+      await new Promise(res => setTimeout(res, 1400)); // temps pour afficher
+    }
+
+    post.content = getSinglePostContent();
+    // console.log("📌 Caption extracted:", post.content);
+
+    await new Promise(res => setTimeout(res, 350)); // anti freeze Instagram
+  }
+
+  return posts;
+}
+
+
 // === FONCTION PRINCIPALE POUR RÉCUPÉRER TOUT LE PROFIL ===
-function getFullProfileData() {
-  console.log("🎯 Getting full Instagram profile data...");
+async function getFullProfileData() {
+//   console.log("🎯 Getting full Instagram profile data...");
   
   const profileData = {
     bio: getInstagramBio(),
-    posts: getAllProfilePosts(),
+    posts: await fetchFullPostsDetails(await getAllProfilePosts()),
     username: null,
     followers: null,
     following: null,
@@ -161,8 +154,8 @@ function waitForProfileData(maxMs = 5000) {
   return new Promise((resolve) => {
     const start = performance.now();
     
-    function check() {
-      const data = getFullProfileData();
+    async function check() {
+      const data = await getFullProfileData();
       
       // Considérer comme succès si on a au moins la bio OU des posts
       if (data.bio || data.posts.length > 0) {
