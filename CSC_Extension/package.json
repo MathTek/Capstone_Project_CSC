@@ -21,6 +21,7 @@
     "vite-plugin-static-copy": "^3.1.4"
   },
   "dependencies": {
+    "@tailwindcss/postcss": "^4.1.17",
     "chart.js": "^4.5.1"
   }
 }
