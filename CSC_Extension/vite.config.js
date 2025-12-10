@@ -33,7 +33,10 @@ export default defineConfig({
       input: {
         popup: resolve(__dirname, 'src/popup.js'),
         background: resolve(__dirname, 'src/background/background.js'),
-        content: resolve(__dirname, 'src/content/content.js')
+        content: resolve(__dirname, 'src/content/content.js'),
+        bioAnalyse: resolve(__dirname, 'src/content/bioAnalyse.js'),
+        postAnalyse: resolve(__dirname, 'src/content/postAnalyse.js'),
+        profileAnalyse: resolve(__dirname, 'src/content/profileAnalyse.js')
       },
       output: {
         entryFileNames: (chunkInfo) => {
@@ -42,8 +45,17 @@ export default defineConfig({
             if (facadeModuleId.includes('background')) {
               return 'background.js';
             }
-            if (facadeModuleId.includes('content')) {
+            if (facadeModuleId.includes('content/content')) {
               return 'content.js';
+            }
+            if (facadeModuleId.includes('bioAnalyse')) {
+              return 'bioAnalyse.js';
+            }
+            if (facadeModuleId.includes('postAnalyse')) {
+              return 'postAnalyse.js';
+            }
+            if (facadeModuleId.includes('profileAnalyse')) {
+              return 'profileAnalyse.js';
             }
             if (facadeModuleId.includes('popup')) {
               return 'popup.js';
