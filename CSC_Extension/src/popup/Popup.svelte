@@ -7,6 +7,47 @@
   const loading = writable(true);
   const profileInfo = writable({});
   const status = writable("Extraction automatique en cours...");
+  let results = writable([]);
+  const numberOfPII = writable(0);
+  const numberOfEmails = writable(0);
+  const numberOfPhoneNumbers = writable(0);
+  const numberOfCreditCards = writable(0);
+
+function detectPII(text, source) {
+  console.log("---------->", text);
+  const piiPatterns = [
+    { type: "credit_card", pattern: /\b(?:\d[ -]*?){13,19}\b/g },
+    { type: "phone", pattern:  /\b\+(?:33|32)[\s.-]?[1-9](?:[\s.-]?\d{2}){4}\b|\+262[\s.-]?\d{3}(?:[\s.-]?\d{2}){3}\b/g },
+    { type: "email", pattern: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi },
+    // { type: "address_start", pattern: /\b\d{1,5}\s+[A-Za-z][A-Za-z0-9éèàêâôùïüç'’\-\. ]+\b/g }
+  ];
+
+  const results = [];
+  const detectedValues = new Set(); // Pour éviter les doublons
+
+
+  for (const { type, pattern } of piiPatterns) {
+    const matches = text.match(pattern);
+    if (matches) {
+      for (const value of matches) {
+        // Ne pas ajouter si déjà détecté
+        if (!detectedValues.has(value)) {
+          results.push({ type, value, source });
+          detectedValues.add(value);
+          // console.log(`⚠️ PII détecté: ${type} → "${value}" dans ${source}`);
+        }
+      }
+    }
+  }
+
+
+  if (results.length === 0) {
+    console.log("✅ Aucun PII détecté");
+  }
+
+  return results;
+}
+
 
   onMount(async () => {
     console.log("🚀 Popup loaded, starting automatic extraction...");
@@ -14,7 +55,6 @@
     chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
       const currentTab = tabs[0];
       
-      // Vérifier si nous sommes sur Instagram
       if (!currentTab.url.includes('instagram.com')) {
         status.set("❌ Veuillez naviguer vers un profil Instagram");
         loading.set(false);
@@ -23,7 +63,6 @@
       
       status.set("🔄 Vérification du content script...");
       
-      // Essayer d'injecter le content script si nécessaire
       try {
         await chrome.scripting.executeScript({
           target: { tabId: currentTab.id },
@@ -34,26 +73,21 @@
         console.log("ℹ️ Content script probablement déjà présent:", error.message);
       }
       
-      // Attendre un peu pour que le script s'initialise
       setTimeout(() => {
         status.set("🔍 Extraction automatique des données du profil...");
         
-        // Configurer un timeout pour éviter l'attente infinie
         const messageTimeout = setTimeout(() => {
           console.error("⏰ Timeout: Aucune réponse du content script");
           status.set("❌ Timeout: Content script ne répond pas. Rechargez la page.");
           loading.set(false);
-        }, 10000); // 10 secondes de timeout
+        }, 10000); 
         
-        // Récupérer automatiquement toutes les données du profil
         chrome.tabs.sendMessage(
           currentTab.id,
           { action: "getFullProfile" },
           (response) => {
-            // Annuler le timeout puisqu'on a reçu une réponse
             clearTimeout(messageTimeout);
             
-            // Vérifier les erreurs de runtime
             if (chrome.runtime.lastError) {
               console.error("❌ Erreur de communication:", chrome.runtime.lastError.message);
               status.set("❌ Erreur: " + chrome.runtime.lastError.message);
@@ -64,7 +98,6 @@
             console.log("📦 Full profile data received:", response);
             
             if (response) {
-              // Vérifier s'il y a une erreur dans la réponse
               if (response.error) {
                 console.error("❌ Erreur du content script:", response.error);
                 status.set("❌ Erreur: " + response.error);
@@ -72,13 +105,39 @@
                 return;
               }
               
-              // Mettre à jour la bio
               bio.set(response.bio || "Aucune bio trouvée");
-              
-              // Mettre à jour les posts
+              results.set(detectPII($bio, "bio"));
+
               posts.set(response.posts || []);
-              
-              // Mettre à jour les infos du profil
+
+              if ($posts.length != 0) {
+                for (const post of $posts) {
+                  // detectPII(post.caption, "post "+ post.id);
+                  // console.log("---->", post.content, "from post", post.index);
+                  results.update(n => [...n, ...detectPII(post.content, "post "+ post.index)]);
+                }
+              }
+
+              console.log("🔒 Résultats finaux de la détection PII:", $results);
+
+              numberOfPII.set($results.length);
+
+              $results.forEach(element => {
+                switch (element.type) {
+                  case "email":
+                    $numberOfEmails++;
+                    break;
+                  case "phone":
+                    $numberOfPhoneNumbers++;
+                    break;
+                  case "credit_card":
+                    $numberOfCreditCards++;
+                    break;
+                }
+              });
+
+              console.log("📊 Statistiques PII - Emails:", $numberOfEmails, "Phones:", $numberOfPhoneNumbers, "Credit Cards:", $numberOfCreditCards);
+
               profileInfo.set({
                 username: response.username,
                 followers: response.followers,
@@ -87,7 +146,6 @@
                 url: response.url
               });
               
-              // Mettre à jour le statut
               const postsCount = (response.posts || []).length;
               const bioStatus = response.bio ? '✓ Bio' : '✗ Bio';
               status.set(`✅ Extraction terminée: ${bioStatus}, ${postsCount} posts trouvés`);
@@ -99,11 +157,10 @@
             loading.set(false);
           }
         );
-      }, 1500); // Délai un peu plus long pour l'initialisation
+      }, 1500);
     });
   });
 
-  // Fonction pour forcer une nouvelle extraction
   async function refreshData() {
     loading.set(true);
     status.set("🔄 Nouvelle extraction en cours...");
@@ -113,7 +170,6 @@
     chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
       const currentTab = tabs[0];
       
-      // Re-injecter le content script pour être sûr
       try {
         await chrome.scripting.executeScript({
           target: { tabId: currentTab.id },
@@ -124,9 +180,7 @@
         console.log("ℹ️ Content script déjà présent");
       }
       
-      // Attendre un peu puis envoyer le message
       setTimeout(() => {
-        // Timeout pour éviter l'attente infinie
         const refreshTimeout = setTimeout(() => {
           console.error("⏰ Refresh timeout");
           status.set("❌ Timeout lors du rafraîchissement");
@@ -139,7 +193,6 @@
           (response) => {
             clearTimeout(refreshTimeout);
             
-            // Vérifier les erreurs de runtime
             if (chrome.runtime.lastError) {
               console.error("❌ Erreur de communication:", chrome.runtime.lastError.message);
               status.set("❌ Erreur: " + chrome.runtime.lastError.message);
@@ -148,7 +201,6 @@
             }
             
             if (response) {
-              // Vérifier erreur dans la réponse
               if (response.error) {
                 console.error("❌ Erreur du content script:", response.error);
                 status.set("❌ Erreur: " + response.error);
@@ -179,7 +231,6 @@
     });
   }
 
-  // Fonction pour recharger la page Instagram
   function reloadInstagramPage() {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       chrome.tabs.reload(tabs[0].id, () => {
@@ -189,139 +240,133 @@
     });
   }
 
-  // Fonction de debug pour analyser la page
-  function debugPage() {
-    status.set("🔧 Analyse de la structure de la page...");
-    
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      chrome.tabs.sendMessage(
-        tabs[0].id,
-        { action: "debug" },
-        (response) => {
-          if (chrome.runtime.lastError) {
-            console.error("❌ Erreur debug:", chrome.runtime.lastError.message);
-            status.set("❌ Erreur de debug");
-            return;
-          }
-          
-          if (response && response.debug) {
-            const debug = response.debug;
-            status.set(`🔧 Debug: ${debug.postLinks} liens posts, ${debug.images} images, ${debug.articles} articles`);
-            console.log("🔧 Debug info:", debug);
-          } else {
-            status.set("❌ Pas d'infos de debug reçues");
-          }
-        }
-      );
-    });
-  }
 </script>
 
-<div class="w-full max-w-md mx-auto min-h-screen bg-gradient-to-br from-blue-400 via-purple-500 to-indigo-600 p-2">
-  <div class="bg-base-100/95 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden space-y-4">
+<div class="w-full max-w-md mx-auto min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 p-3">
+  <div class="bg-slate-800/80 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-slate-700">
     
-    <!-- Header avec statut -->
-    <div class="bg-gradient-to-r from-primary to-secondary p-4 text-white">
-      <h1 class="font-bold text-lg">🔍 CSC Instagram Analyzer</h1>
-      <p class="text-xs opacity-90">{$status}</p>
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-emerald-400 to-cyan-400 p-5 text-slate-900 shadow-md">
+      <div class="flex items-center justify-between">
+        <h1 class="font-extrabold text-xl tracking-tight">🔍 CSC Instagram Analyzer</h1>
+        <div class="badge badge-outline badge-lg bg-white/20 border-white/40 text-slate-900">beta</div>
+      </div>
+      <p class="text-xs mt-1 font-medium">{$status}</p>
+
       {#if $profileInfo.username}
-        <div class="mt-2 text-sm">
-          <span class="font-medium">@{$profileInfo.username}</span>
+        <div class="mt-3 text-sm flex items-center gap-2">
+          <span class="font-semibold">@{$profileInfo.username}</span>
           {#if $profileInfo.followers}
-            <span class="ml-2 opacity-75">{$profileInfo.followers} abonnés</span>
+            <span class="opacity-80">• {$profileInfo.followers} abonnés</span>
+          {/if}
+          {#if $profileInfo.following}
+            <span class="opacity-80">• {$profileInfo.following} suivis</span>
           {/if}
         </div>
       {/if}
     </div>
 
-    <div class="px-4 pb-4 space-y-4">
-      <!-- Loading indicator -->
+    <!-- Body -->
+    <div class="px-5 pb-5 pt-4 space-y-4 text-slate-200">
+      
       {#if $loading}
         <div class="flex items-center justify-center p-4">
-          <span class="loading loading-spinner loading-md"></span>
-          <span class="ml-2">Extraction en cours...</span>
+          <span class="loading loading-spinner loading-lg text-emerald-400"></span>
+          <span class="ml-3 font-medium">Extraction en cours...</span>
         </div>
       {/if}
 
-      <!-- Action buttons -->
-      <div class="flex gap-1 justify-center flex-wrap">
-        <button class="btn btn-sm btn-outline" on:click={refreshData} disabled={$loading}>
+      <!-- Actions -->
+      <div class="flex gap-2 justify-center flex-wrap">
+        <button class="btn btn-sm btn-outline rounded-full border-emerald-400 text-emerald-300 hover:bg-emerald-400 hover:text-slate-900" 
+                on:click={refreshData} disabled={$loading}>
           🔄 Actualiser
         </button>
-        <button class="btn btn-sm btn-secondary" on:click={reloadInstagramPage}>
-          🔄 Recharger Page
-        </button>
-        <button class="btn btn-sm btn-info" on:click={debugPage}>
-          🔧 Debug
+
+        <button class="btn btn-sm rounded-full bg-cyan-400 text-slate-900 hover:bg-cyan-300" 
+                on:click={reloadInstagramPage}>
+          ♻️ Recharger
         </button>
       </div>
 
-      <!-- Section Bio -->
-      <div class="card bg-base-100 shadow-lg">
-        <div class="card-body p-4">
-          <h2 class="card-title text-sm mb-3">📋 Bio Instagram</h2>
-          <div class="bg-base-200 p-3 rounded-lg max-h-24 overflow-y-auto">
-            <p class="text-xs whitespace-pre-wrap">{$bio}</p>
+      {#if !$loading}
+        
+        <!-- Stats -->
+        <div class="grid grid-cols-3 gap-3">
+          <div class="stat bg-slate-900/60 rounded-2xl border border-slate-700">
+            <div class="stat-title text-slate-400">PII total</div>
+            <div class="stat-value text-emerald-400">{$numberOfPII}</div>
+            <div class="stat-desc">Bio & posts</div>
+          </div>
+
+          <div class="stat bg-slate-900/60 rounded-2xl border border-slate-700">
+            <div class="stat-title text-slate-400">Emails</div>
+            <div class="stat-value text-cyan-300">{$numberOfEmails}</div>
+            <div class="stat-desc">Détectés</div>
+          </div>
+
+          <div class="stat bg-slate-900/60 rounded-2xl border border-slate-700">
+            <div class="stat-title text-slate-400">Téléphones</div>
+            <div class="stat-value text-lime-300">{$numberOfPhoneNumbers}</div>
+            <div class="stat-desc">Internationaux</div>
           </div>
         </div>
-      </div>
 
-      <!-- Section Posts -->
-      <div class="card bg-base-100 shadow-lg">
-        <div class="card-body p-4">
-          <h2 class="card-title text-sm mb-3">
-            📝 Posts du Profil 
-            <span class="badge badge-primary badge-sm">{$posts.length}</span>
-          </h2>
-          
-          {#if $posts.length > 0}
-            <div class="space-y-3 max-h-60 overflow-y-auto">
-              {#each $posts as post, index}
-                <div class="bg-base-200 p-3 rounded-lg border-l-2 border-primary">
-                  <div class="flex items-start justify-between mb-2">
-                    <span class="text-xs font-bold text-primary">Post #{post.index || index + 1}</span>
-                    <span class="text-xs opacity-60">{post.type || 'grid'}</span>
-                  </div>
-                  <p class="text-xs whitespace-pre-wrap line-clamp-4">
-                    {post.content || post}
-                  </p>
-                  {#if post.url}
-                    <a href={post.url} target="_blank" class="text-xs text-primary hover:underline mt-1 inline-block">
-                      🔗 Voir le post
-                    </a>
-                  {/if}
+        <!-- PII Card -->
+        <div class="card bg-slate-900/50 shadow-xl border border-slate-700 rounded-2xl">
+          <div class="card-body">
+            <h2 class="card-title text-emerald-300">🔒 Données détectées</h2>
+
+            {#if $results.length === 0}
+              <div class="alert alert-success bg-emerald-500/20 text-emerald-300 border-emerald-400">
+                <span>Aucun PII détecté</span>
+              </div>
+            {:else}
+              <div class="space-y-3 max-h-64 overflow-y-auto pr-1">
+                <h3 class="font-semibold text-sm text-slate-400">Répartition</h3>
+
+                <div class="flex flex-wrap gap-2">
+                  <span class="badge badge-outline border-cyan-400 text-cyan-300">Emails: {$numberOfEmails}</span>
+                  <span class="badge badge-outline border-lime-300 text-lime-300">Téléphones: {$numberOfPhoneNumbers}</span>
+                  <span class="badge badge-outline border-rose-400 text-rose-300">Cartes: {$numberOfCreditCards}</span>
                 </div>
-              {/each}
-            </div>
-          {:else if !$loading}
-            <div class="bg-base-200 p-3 rounded-lg text-center">
-              <p class="text-xs opacity-60">Aucun post trouvé sur cette page</p>
-            </div>
-          {/if}
-        </div>
-      </div>
 
-      <!-- Summary -->
-      {#if !$loading && ($bio !== "Aucune bio trouvée" || $posts.length > 0)}
-        <div class="card bg-success/10 shadow-lg">
-          <div class="card-body p-4">
-            <h3 class="card-title text-sm text-success mb-2">✅ Résumé de l'extraction</h3>
-            <div class="grid grid-cols-2 gap-2 text-xs">
-              <div class="stat">
-                <div class="stat-title text-xs">Bio</div>
-                <div class="stat-value text-sm">{$bio !== "Aucune bio trouvée" ? "✓" : "✗"}</div>
+                <h3 class="font-semibold text-sm text-slate-400">Détails</h3>
+
+                <ul class="menu menu-sm bg-slate-800/80 rounded-box border border-slate-700">
+                  {#each $results as item}
+                    <li>
+                      <a class="justify-between hover:bg-slate-700/50">
+                        <span class="font-mono text-xs truncate max-w-[12rem]">{item.value}</span>
+                        <span class="badge badge-ghost text-emerald-300 border-emerald-300 capitalize">{item.type}</span>
+                        <span class="badge badge-outline border-cyan-400 text-cyan-300">{item.source}</span>
+                      </a>
+                    </li>
+                  {/each}
+                </ul>
               </div>
-              <div class="stat">
-                <div class="stat-title text-xs">Posts</div>
-                <div class="stat-value text-sm">{$posts.length}</div>
-              </div>
-            </div>
+            {/if}
           </div>
         </div>
       {/if}
+
+      <!-- Bio Card -->
+      <div class="card bg-slate-900/50 shadow-md border border-slate-700 rounded-2xl">
+        <div class="card-body">
+          <h2 class="card-title text-cyan-300">🧬 Bio</h2>
+          <p class="line-clamp-4 text-sm leading-relaxed text-slate-300">{$bio}</p>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="flex items-center justify-between text-xs text-slate-500 pt-2">
+        <span>Powered by CSC • {new Date().getFullYear()}</span>
+        <a class="link text-emerald-400 hover:text-emerald-300" href="https://instagram.com" target="_blank">Ouvrir Instagram</a>
+      </div>
     </div>
   </div>
 </div>
+
 
 <style>
   .line-clamp-4 {
