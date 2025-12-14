@@ -260,4 +260,4 @@ if (typeof chrome !== "undefined" && chrome.runtime) {
   });
 }
 
-export {}; // keep module scope
+export {};

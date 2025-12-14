@@ -2,11 +2,11 @@
   import { onMount } from "svelte";
   import { writable } from "svelte/store";
 
-  const bio = writable("Chargement de la bio...");
+  const bio = writable("Loading bio...");
   const posts = writable([]);
   const loading = writable(true);
   const profileInfo = writable({});
-  const status = writable("Extraction automatique en cours...");
+  const status = writable("Automatic extraction in progress...");
   let results = writable([]);
   const numberOfPII = writable(0);
   const numberOfEmails = writable(0);
@@ -23,18 +23,16 @@ function detectPII(text, source) {
   ];
 
   const results = [];
-  const detectedValues = new Set(); // Pour éviter les doublons
+  const detectedValues = new Set();
 
 
   for (const { type, pattern } of piiPatterns) {
     const matches = text.match(pattern);
     if (matches) {
       for (const value of matches) {
-        // Ne pas ajouter si déjà détecté
         if (!detectedValues.has(value)) {
           results.push({ type, value, source });
           detectedValues.add(value);
-          // console.log(`⚠️ PII détecté: ${type} → "${value}" dans ${source}`);
         }
       }
     }
@@ -42,7 +40,7 @@ function detectPII(text, source) {
 
 
   if (results.length === 0) {
-    console.log("✅ Aucun PII détecté");
+    console.log("✅ No PII detected");
   }
 
   return results;
@@ -56,29 +54,29 @@ function detectPII(text, source) {
       const currentTab = tabs[0];
       
       if (!currentTab.url.includes('instagram.com')) {
-        status.set("❌ Veuillez naviguer vers un profil Instagram");
+        status.set("❌ Please navigate to an Instagram profile");
         loading.set(false);
         return;
       }
       
-      status.set("🔄 Vérification du content script...");
+      status.set("🔄 Checking content script...");
       
       try {
         await chrome.scripting.executeScript({
           target: { tabId: currentTab.id },
           files: ['content.js']
         });
-        console.log("✅ Content script injecté avec succès");
+        console.log("✅ Content script injected successfully");
       } catch (error) {
-        console.log("ℹ️ Content script probablement déjà présent:", error.message);
+        console.log("ℹ️ Content script probably already present:", error.message);
       }
       
       setTimeout(() => {
-        status.set("🔍 Extraction automatique des données du profil...");
+        status.set("🔍 Automatic profile data extraction...");
         
         const messageTimeout = setTimeout(() => {
-          console.error("⏰ Timeout: Aucune réponse du content script");
-          status.set("❌ Timeout: Content script ne répond pas. Rechargez la page.");
+          console.error("⏰ Timeout: No response from content script");
+          status.set("❌ Timeout: Content script not responding. Reload the page.");
           loading.set(false);
         }, 10000); 
         
@@ -163,7 +161,7 @@ function detectPII(text, source) {
 
   async function refreshData() {
     loading.set(true);
-    status.set("🔄 Nouvelle extraction en cours...");
+    status.set("🔄 New extraction in progress...");
     bio.set("Rechargement...");
     posts.set([]);
     
@@ -234,7 +232,7 @@ function detectPII(text, source) {
   function reloadInstagramPage() {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       chrome.tabs.reload(tabs[0].id, () => {
-        status.set("🔄 Page rechargée. Attendez le rechargement puis cliquez sur Actualiser.");
+        status.set("🔄 Page reloaded. Wait for reload then click Refresh.");
         loading.set(false);
       });
     });
@@ -257,10 +255,10 @@ function detectPII(text, source) {
         <div class="mt-3 text-sm flex items-center gap-2">
           <span class="font-semibold">@{$profileInfo.username}</span>
           {#if $profileInfo.followers}
-            <span class="opacity-80">• {$profileInfo.followers} abonnés</span>
+            <span class="opacity-80">• {$profileInfo.followers} followers</span>
           {/if}
           {#if $profileInfo.following}
-            <span class="opacity-80">• {$profileInfo.following} suivis</span>
+            <span class="opacity-80">• {$profileInfo.following} following</span>
           {/if}
         </div>
       {/if}
@@ -272,7 +270,7 @@ function detectPII(text, source) {
       {#if $loading}
         <div class="flex items-center justify-center p-4">
           <span class="loading loading-spinner loading-lg text-emerald-400"></span>
-          <span class="ml-3 font-medium">Extraction en cours...</span>
+          <span class="ml-3 font-medium">Extraction in progress...</span>
         </div>
       {/if}
 
@@ -280,12 +278,12 @@ function detectPII(text, source) {
       <div class="flex gap-2 justify-center flex-wrap">
         <button class="btn btn-sm btn-outline rounded-full border-emerald-400 text-emerald-300 hover:bg-emerald-400 hover:text-slate-900" 
                 on:click={refreshData} disabled={$loading}>
-          🔄 Actualiser
+          🔄 Refresh
         </button>
 
         <button class="btn btn-sm rounded-full bg-cyan-400 text-slate-900 hover:bg-cyan-300" 
                 on:click={reloadInstagramPage}>
-          ♻️ Recharger
+          ♻️ Reload
         </button>
       </div>
 
@@ -302,36 +300,36 @@ function detectPII(text, source) {
           <div class="stat bg-slate-900/60 rounded-2xl border border-slate-700">
             <div class="stat-title text-slate-400">Emails</div>
             <div class="stat-value text-cyan-300">{$numberOfEmails}</div>
-            <div class="stat-desc">Détectés</div>
+            <div class="stat-desc">Detected</div>
           </div>
 
           <div class="stat bg-slate-900/60 rounded-2xl border border-slate-700">
-            <div class="stat-title text-slate-400">Téléphones</div>
+            <div class="stat-title text-slate-400">Phones</div>
             <div class="stat-value text-lime-300">{$numberOfPhoneNumbers}</div>
-            <div class="stat-desc">Internationaux</div>
+            <div class="stat-desc">International</div>
           </div>
         </div>
 
         <!-- PII Card -->
         <div class="card bg-slate-900/50 shadow-xl border border-slate-700 rounded-2xl">
           <div class="card-body">
-            <h2 class="card-title text-emerald-300">🔒 Données détectées</h2>
+            <h2 class="card-title text-emerald-300">🔒 Detected Data</h2>
 
             {#if $results.length === 0}
               <div class="alert alert-success bg-emerald-500/20 text-emerald-300 border-emerald-400">
-                <span>Aucun PII détecté</span>
+                <span>No PII detected</span>
               </div>
             {:else}
               <div class="space-y-3 max-h-64 overflow-y-auto pr-1">
-                <h3 class="font-semibold text-sm text-slate-400">Répartition</h3>
+                <h3 class="font-semibold text-sm text-slate-400">Distribution</h3>
 
                 <div class="flex flex-wrap gap-2">
                   <span class="badge badge-outline border-cyan-400 text-cyan-300">Emails: {$numberOfEmails}</span>
-                  <span class="badge badge-outline border-lime-300 text-lime-300">Téléphones: {$numberOfPhoneNumbers}</span>
-                  <span class="badge badge-outline border-rose-400 text-rose-300">Cartes: {$numberOfCreditCards}</span>
+                  <span class="badge badge-outline border-lime-300 text-lime-300">Phones: {$numberOfPhoneNumbers}</span>
+                  <span class="badge badge-outline border-rose-400 text-rose-300">Cards: {$numberOfCreditCards}</span>
                 </div>
 
-                <h3 class="font-semibold text-sm text-slate-400">Détails</h3>
+                <h3 class="font-semibold text-sm text-slate-400">Details</h3>
 
                 <ul class="menu menu-sm bg-slate-800/80 rounded-box border border-slate-700">
                   {#each $results as item}
@@ -361,7 +359,7 @@ function detectPII(text, source) {
       <!-- Footer -->
       <div class="flex items-center justify-between text-xs text-slate-500 pt-2">
         <span>Powered by CSC • {new Date().getFullYear()}</span>
-        <a class="link text-emerald-400 hover:text-emerald-300" href="https://instagram.com" target="_blank">Ouvrir Instagram</a>
+        <a class="link text-emerald-400 hover:text-emerald-300" href="https://instagram.com" target="_blank">Open Instagram</a>
       </div>
     </div>
   </div>
