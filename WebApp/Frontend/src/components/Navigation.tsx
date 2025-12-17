@@ -1,0 +1,98 @@
+import { Menu, X, Sun, Moon, Shield } from 'lucide-react';
+import { useState } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
+
+interface NavigationProps {
+  currentPage: string;
+  onNavigate: (page: string) => void;
+}
+
+export default function Navigation({ currentPage, onNavigate }: NavigationProps) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+
+  const navItems = [
+    { id: 'home', label: 'Home' },
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'risks', label: 'Risk Analysis' },
+    { id: 'education', label: 'Learn More' },
+  ];
+
+  const handleNavigate = (page: string) => {
+    onNavigate(page);
+    setIsMenuOpen(false);
+  };
+
+  return (
+    <nav className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => handleNavigate('home')}>
+            <Shield className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            <span className="text-xl font-bold text-gray-900 dark:text-white">C.S.C</span>
+          </div>
+
+          <div className="hidden md:flex items-center space-x-1">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => handleNavigate(item.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  currentPage === item.id
+                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+            <button
+              onClick={toggleTheme}
+              className="ml-4 p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              aria-label="Toggle theme"
+            >
+              {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+            </button>
+          </div>
+
+          <div className="md:hidden flex items-center space-x-2">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              aria-label="Toggle theme"
+            >
+              {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+            </button>
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              aria-label="Toggle menu"
+            >
+              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {isMenuOpen && (
+        <div className="md:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+          <div className="px-4 py-3 space-y-1">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => handleNavigate(item.id)}
+                className={`w-full text-left px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  currentPage === item.id
+                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </nav>
+  );
+}
