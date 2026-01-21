@@ -14,7 +14,6 @@
   const numberOfCreditCards = writable(0);
 
 function detectPII(text, source) {
-  console.log("---------->", text);
   const piiPatterns = [
     { type: "credit_card", pattern: /\b(?:\d[ -]*?){13,19}\b/g },
     { type: "phone", pattern:  /\b\+(?:33|32)[\s.-]?[1-9](?:[\s.-]?\d{2}){4}\b|\+262[\s.-]?\d{3}(?:[\s.-]?\d{2}){3}\b/g },

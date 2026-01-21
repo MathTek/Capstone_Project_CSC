@@ -1,6 +1,11 @@
-from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from fastapi import FastAPI, Depends, HTTPException
+from sqlalchemy.orm import Session
+from db import SessionLocal, engine, Base
+from models import User
+from utils import hash_password, verify_password
+from auth import create_access_token
+from pydantic import BaseModel
 app = FastAPI()
 
 app.add_middleware(
@@ -13,3 +18,39 @@ app.add_middleware(
 @app.get("/data")
 def get_data():
     return {"values": [10, 30, 50, 80]}
+
+class UserCreate(BaseModel):
+    username: str
+    email: str
+    password: str
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@app.post("/register")
+def register(user: UserCreate, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.username == user.username).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Username already registered")
+    hashed_pw = hash_password(user.password)
+    new_user = User(username=user.username, email=user.email, password_hash=hashed_pw)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"msg": "User created successfully"}
+
+@app.post("/login")
+def login(user: UserLogin, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.username == user.username).first()
+    if not db_user or not verify_password(user.password, db_user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = create_access_token({"sub": db_user.username})
+    return {"access_token": token, "token_type": "bearer"}

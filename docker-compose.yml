@@ -1,4 +1,3 @@
-version: "3.9"
 
 services:
 
@@ -20,7 +19,6 @@ services:
       - ./WebApp/Backend:/app
 
   extension:
-    build: ./WebExtension/svelte/svelte-app
-    command: ["npm", "run", "build"]
+    build: ./CSC_Extension/
     volumes:
-      - ./WebExtension/svelte/svelte-app:/app
+      - ./CSC_Extension:/app
