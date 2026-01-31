@@ -21,7 +21,7 @@ export function detectPII(text, source) {
   }
 
   if (results.length === 0) {
-    console.log("✅ No PII detected");
+    console.log("No PII detected");
   }
 
   return results;

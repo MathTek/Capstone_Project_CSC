@@ -29,11 +29,12 @@
   const isOnInstagram = writable(false);
   const isAuthenticated = writable(false);
   const userInfo = writable(null);
+  const highlights = writable([]);
 
 
   function handleStartScan() {
     hasScanned.set(true);
-    extractProfileData(status, bio, posts, profileInfo, results, numberOfPII, numberOfEmails, numberOfPhoneNumbers, numberOfCreditCards, loading);
+    extractProfileData(status, bio, posts, profileInfo, results, numberOfPII, numberOfEmails, numberOfPhoneNumbers, numberOfCreditCards, loading, highlights);
   }
 
   async function handleLogin(username, password) {
@@ -72,7 +73,7 @@
   }
 
   function handleRefreshData() {
-    refreshProfileData(status, bio, posts, profileInfo, results, numberOfPII, numberOfEmails, numberOfPhoneNumbers, numberOfCreditCards, loading);
+    refreshProfileData(status, bio, posts, profileInfo, results, numberOfPII, numberOfEmails, numberOfPhoneNumbers, numberOfCreditCards, loading, highlights);
   }
 
   function handleReloadInstagramPage() {
