@@ -29,11 +29,13 @@
   const isOnInstagram = writable(false);
   const isAuthenticated = writable(false);
   const userInfo = writable(null);
+  const highlights = writable([]);
+  const pii_types_number = writable({});
 
 
   function handleStartScan() {
     hasScanned.set(true);
-    extractProfileData(status, bio, posts, profileInfo, results, numberOfPII, numberOfEmails, numberOfPhoneNumbers, numberOfCreditCards, loading);
+    extractProfileData(status, bio, posts, profileInfo, results, numberOfPII, numberOfEmails, numberOfPhoneNumbers, numberOfCreditCards, loading, highlights, pii_types_number);
   }
 
   async function handleLogin(username, password) {
@@ -72,7 +74,7 @@
   }
 
   function handleRefreshData() {
-    refreshProfileData(status, bio, posts, profileInfo, results, numberOfPII, numberOfEmails, numberOfPhoneNumbers, numberOfCreditCards, loading);
+    refreshProfileData(status, bio, posts, profileInfo, results, numberOfPII, numberOfEmails, numberOfPhoneNumbers, numberOfCreditCards, loading, highlights);
   }
 
   function handleReloadInstagramPage() {
@@ -167,16 +169,13 @@
           <!-- Stats -->
           <Stats 
             numberOfPII={$numberOfPII}
-            numberOfEmails={$numberOfEmails}
-            numberOfPhoneNumbers={$numberOfPhoneNumbers}
+            pii_types_number={$pii_types_number}
+          
           />
 
           <!-- PII Results -->
           <PIIResults 
             results={$results}
-            numberOfEmails={$numberOfEmails}
-            numberOfPhoneNumbers={$numberOfPhoneNumbers}
-            numberOfCreditCards={$numberOfCreditCards}
           />
         {/if}
 

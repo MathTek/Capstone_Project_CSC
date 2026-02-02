@@ -15,7 +15,6 @@ export async function login(username, password) {
       return false;
     }
 
-    // Sauvegarder l'état d'authentification
     await AuthStorageService.saveAuthState(
       data.access_token || 'dummy-token',
       { username, id: data.user_id || 1 }
@@ -43,7 +42,6 @@ export async function signup(username, email, password) {
       return false;
     }
 
-    // Sauvegarder l'état d'authentification après inscription
     await AuthStorageService.saveAuthState(
       data.access_token || 'dummy-token',
       { username, email, id: data.user_id || 1 }
