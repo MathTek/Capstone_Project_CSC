@@ -1,8 +1,5 @@
 <script>
   export let results;
-  export let numberOfEmails;
-  export let numberOfPhoneNumbers;
-  export let numberOfCreditCards;
 </script>
 
 <div class="card bg-slate-900/50 shadow-xl border border-slate-700 rounded-2xl">
@@ -15,13 +12,6 @@
       </div>
     {:else}
       <div class="space-y-3 max-h-64 overflow-y-auto pr-1">
-        <h3 class="font-semibold text-sm text-slate-400">Distribution</h3>
-
-        <div class="flex flex-wrap gap-2">
-          <span class="badge badge-outline border-cyan-400 text-cyan-300">Emails: {numberOfEmails}</span>
-          <span class="badge badge-outline border-lime-300 text-lime-300">Phones: {numberOfPhoneNumbers}</span>
-          <span class="badge badge-outline border-rose-400 text-rose-300">Cards: {numberOfCreditCards}</span>
-        </div>
 
         <h3 class="font-semibold text-sm text-slate-400">Details</h3>
 

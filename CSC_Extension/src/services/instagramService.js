@@ -23,7 +23,7 @@ export async function checkInstagramPage(status) {
   });
 }
 
-export async function extractProfileData(status, bio, posts, profileInfo, results, numberOfPII, numberOfEmails, numberOfPhoneNumbers, numberOfCreditCards, loading, highlights) {
+export async function extractProfileData(status, bio, posts, profileInfo, results, numberOfPII, numberOfEmails, numberOfPhoneNumbers, numberOfCreditCards, loading, highlights, pii_types_number) {
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
     const currentTab = tabs[0];
     
@@ -80,6 +80,13 @@ export async function extractProfileData(status, bio, posts, profileInfo, result
             const highlightsData = response.stories || [];
             highlights.set(highlightsData);
 
+            if (highlightsData.length !== 0) {
+              for (const highlight of highlightsData) {
+                console.log("Processing highlight:", highlight);
+                results.update(n => [...n, ...detectPII(highlight.title, "highlight "+ highlight.index)]);
+              }
+            }
+
             const postsData = response.posts || [];
             posts.set(postsData);
 
@@ -94,23 +101,16 @@ export async function extractProfileData(status, bio, posts, profileInfo, result
               
               let emails = 0, phones = 0, creditCards = 0;
               
+              const piiTypeCounts = [];
+
               currentResults.forEach(element => {
-                switch (element.type) {
-                  case "email":
-                    emails++;
-                    break;
-                  case "phone":
-                    phones++;
-                    break;
-                  case "credit_card":
-                    creditCards++;
-                    break;
+                if (!piiTypeCounts.includes(element.type)) {
+                  
+                  piiTypeCounts.push(element.type);
                 }
               });
+              pii_types_number.set(piiTypeCounts);
 
-              numberOfEmails.set(emails);
-              numberOfPhoneNumbers.set(phones);
-              numberOfCreditCards.set(creditCards);
             });
 
             profileInfo.set({
@@ -120,6 +120,7 @@ export async function extractProfileData(status, bio, posts, profileInfo, result
               postsCount: response.postsCount || postsData.length,
               url: response.url
             });
+
             
             const postsCount = postsData.length;
             const bioStatus = response.bio ? 'Bio' : 'No Bio';
