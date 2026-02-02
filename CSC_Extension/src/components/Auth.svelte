@@ -9,6 +9,8 @@
     let signUp = false;
     let loading = false;
     let error = "";
+    let display_consent = false;
+    let cgu = false;
 
     async function handleLoginSubmit(event) {
         event.preventDefault();
@@ -34,16 +36,20 @@
 
     async function handleSignupSubmit(event) {
         event.preventDefault();
-        if (!username || !email || !password) {
-            error = "Please fill in all fields";
+        if (!username || !email || !password || !cgu) {
+            error = "Please fill in all mandatory fields";
             return;
         }
-        
+
+        if (!display_consent) {
+            display_consent = false;
+        }
+
         loading = true;
         error = "";
         
         try {
-            const success = await onSignup(username, email, password);
+            const success = await onSignup(username, email, password, display_consent, cgu);
             if (!success) {
                 error = "Registration failed. Please try again.";
             }
@@ -60,6 +66,8 @@
         username = "";
         email = "";
         password = "";
+        display_consent = false;
+        cgu = false;
     }
 </script>
 
@@ -182,6 +190,30 @@
               class="w-full px-4 py-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors"
               placeholder="Create a password" 
             />
+          </div>
+          <div class="flex items-center">
+            <input 
+              id="display-consent" 
+              type="checkbox" 
+              bind:checked={display_consent} 
+              disabled={loading}
+              class="h-4 w-4 text-emerald-400 border-slate-600 bg-slate-900 focus:ring-emerald-400"
+            />
+            <label for="display-consent" class="ml-2 block text-sm text-slate-300">
+              I consent to the display of my data for the results of the analysis.
+            </label>
+          </div>
+          <div class="flex items-center">
+            <input 
+              id="cgu" 
+              type="checkbox" 
+              bind:checked={cgu} 
+              disabled={loading}
+              class="h-4 w-4 text-emerald-400 border-slate-600 bg-slate-900 focus:ring-emerald-400"
+            />
+            <label for="cgu" class="ml-2 block text-sm text-slate-300">
+              I agree to the Terms and Conditions*.
+            </label>
           </div>
           <button 
             type="submit" 
