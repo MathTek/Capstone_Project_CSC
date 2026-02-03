@@ -1,7 +1,7 @@
 <script>
-  export let status;
-  export let profileInfo;
-  export let instagramPageInfo;
+  export let status = '';
+  export let profileInfo = {};
+  export let instagramPageInfo = {};
 </script>
 
 <div class="bg-gradient-to-r from-emerald-400 to-cyan-400 p-5 text-slate-900 shadow-md">
