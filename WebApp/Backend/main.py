@@ -42,6 +42,8 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.username == user.username).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
+    if not user.cgu:
+        raise HTTPException(status_code=400, detail="Terms and conditions must be accepted")
     hashed_pw = hash_password(user.password)
     new_user = User(username=user.username, email=user.email, password_hash=hashed_pw, display_consent=user.display_consent, cgu=user.cgu)
     db.add(new_user)
