@@ -34,14 +34,14 @@ PII_WEIGHTS_BY_SOURCE = {
     "highlight": 1.5,
 }
 
-def occurences_multiplier(occurencies):
-    if occurencies >= 5:
+def occurences_multiplier(occurrences):
+    if occurrences >= 5:
         return 1.5
-    elif occurencies == 4:
+    elif occurrences == 4:
         return 1.4
-    elif occurencies == 3:
+    elif occurrences == 3:
         return 1.3
-    elif occurencies == 2:
+    elif occurrences == 2:
         return 1.2
     else:
         return 1.0
