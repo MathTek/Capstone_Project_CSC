@@ -64,4 +64,4 @@ def calculate_score(pii_list):
         deduction = weight * occurrences_mult * source_mult
         total_score -= deduction
 
-    return total_score
+    return max(0, total_score)
