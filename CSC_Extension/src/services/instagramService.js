@@ -139,13 +139,13 @@ export async function extractProfileData(status, bio, posts, profileInfo, result
               });
 
               console.log("Aggregated PII list:", piiList);
-              try {
-                sendPIIList(piiList).then(score => {
+              sendPIIList(piiList)
+                .then(score => {
                   console.log("Calculated score:", score);
+                })
+                .catch(error => {
+                  console.error("Error sending PII list:", error);
                 });
-              } catch (error) {
-                console.error("Error sending PII list:", error);
-              }
 
 
 
