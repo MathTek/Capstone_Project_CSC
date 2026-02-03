@@ -6,6 +6,8 @@ from models import User
 from utils import hash_password, verify_password
 from auth import create_access_token
 from pydantic import BaseModel
+from score_calculation import calculate_score
+from typing import List, Literal
 app = FastAPI()
 
 app.add_middleware(
@@ -15,9 +17,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/data")
-def get_data():
-    return {"values": [10, 30, 50, 80]}
+class PIIItem(BaseModel):
+    type: str
+    occurrence: int
+    source: Literal["bio", "post", "highlight"]
+
+class ScoreRequest(BaseModel):
+    pii_list: List[PIIItem]
 
 class UserCreate(BaseModel):
     username: str
@@ -58,3 +64,11 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token({"sub": db_user.username})
     return {"access_token": token, "token_type": "bearer", "user_id": db_user.id, "display_content": db_user.display_consent}
+
+@app.post("/calculate_score")
+def calculate_score_endpoint(
+    payload: ScoreRequest,
+    db: Session = Depends(get_db)
+):
+    score = calculate_score(payload.pii_list)
+    return {"score": score}
