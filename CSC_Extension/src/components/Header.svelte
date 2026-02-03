@@ -1,6 +1,7 @@
 <script>
-  export let status;
-  export let profileInfo;
+  export let status = '';
+  export let profileInfo = {};
+  export let instagramPageInfo = {};
 </script>
 
 <div class="bg-gradient-to-r from-emerald-400 to-cyan-400 p-5 text-slate-900 shadow-md">
@@ -13,11 +14,11 @@
 
   <p class="text-xs mt-1 font-medium">{status}</p>
 
-  {#if profileInfo.username}
+  {#if instagramPageInfo.username}
     <div class="mt-3 text-sm flex items-center gap-2">
-      <span class="font-semibold">@{profileInfo.username}</span>
-        <span class="opacity-80">• {profileInfo.followers} followers</span>
-        <span class="opacity-80">• {profileInfo.following} following</span>
+      <span class="font-semibold">@{instagramPageInfo.username}</span>
+        <span class="opacity-80">• {instagramPageInfo.followers} followers</span>
+        <span class="opacity-80">• {instagramPageInfo.following} following</span>
     </div>
   {/if}
 </div>

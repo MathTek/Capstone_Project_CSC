@@ -15,12 +15,13 @@ export async function login(username, password) {
       return false;
     }
 
+
+
     await AuthStorageService.saveAuthState(
       data.access_token || 'dummy-token',
-      { username, id: data.user_id || 1 }
+      { username, id: data.user_id || 1, display_content: data.display_content || false }
     );
 
-    console.log("Login successful:", data);
     return true;
   } catch (err) {
     console.error("Error logging in:", err);
@@ -28,12 +29,12 @@ export async function login(username, password) {
   }
 }
 
-export async function signup(username, email, password) {
+export async function signup(username, email, password, display_consent, cgu) {
   try {
     const res = await fetch("http://localhost:8000/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, email, password })
+      body: JSON.stringify({ username, email, password, display_consent, cgu })
     });
 
     const data = await res.json();

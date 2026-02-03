@@ -56,9 +56,10 @@
     }
   }
 
-  async function handleSignup(username, email, password) {
+  async function handleSignup(username, email, password, display_consent, cgu) {
     try {
-      const success = await signup(username, email, password);
+      const success = await signup(username, email, password, display_consent, cgu);
+
       if (success) {
         isAuthenticated.set(true);
         setTimeout(async () => {
@@ -66,6 +67,7 @@
           isOnInstagram.set(onInstagram);
         }, 100);
       }
+
       return success;
     } catch (error) {
       console.error("Signup error:", error);
@@ -132,8 +134,8 @@
       <!-- Header -->
       <Header 
         status={$status} 
-        profileInfo={$profileInfo}
-        username={$userInfo?.username}
+        profileInfo={$userInfo}
+        instagramPageInfo={$profileInfo}
       />
       
       <!-- Body -->
@@ -172,11 +174,17 @@
             pii_types_number={$pii_types_number}
           
           />
-
-          <!-- PII Results -->
-          <PIIResults 
-            results={$results}
-          />
+          {#if $userInfo.display_content}
+            <!-- PII Results -->
+            <PIIResults 
+              results={$results}
+            />
+          {:else}
+            <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
+              <p class="font-bold">Consent Not Given</p>
+              <p>User has not given consent to display PII results.</p>
+            </div>
+          {/if}
         {/if}
 
         <!-- Bio (only shown after scan) -->

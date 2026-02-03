@@ -27,7 +27,6 @@ export class AuthStorageService {
         await this.clearAuthState();
         return { isAuthenticated: false };
       }
-
       return {
         isAuthenticated: true,
         token: result.authToken,
