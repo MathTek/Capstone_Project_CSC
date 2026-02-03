@@ -1,6 +1,5 @@
 import { each } from 'chart.js/helpers';
 import { detectPII } from '../utils/piiDetector.js';
-import { split } from 'postcss/lib/list';
 
 export async function checkInstagramPage(status) {
   return new Promise((resolve) => {
