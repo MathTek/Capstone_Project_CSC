@@ -1,4 +1,3 @@
-import { each } from 'chart.js/helpers';
 import { detectPII } from '../utils/piiDetector.js';
 
 export async function checkInstagramPage(status) {
