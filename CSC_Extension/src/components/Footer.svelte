@@ -15,8 +15,8 @@
     </div>
 
     <div class="flex items-center gap-3">
-      <a href="tlp" class="text-xs text-slate-400 hover:text-emerald-300 transition">Privacy</a>
-      <a href="tlp" class="text-xs text-slate-400 hover:text-emerald-300 transition">Terms</a>
+      <a href="#" class="text-xs text-slate-400 hover:text-emerald-300 transition">Privacy</a>
+      <a href="#" class="text-xs text-slate-400 hover:text-emerald-300 transition">Terms</a>
 
       <a href="https://github.com" target="_blank" rel="noopener" class="flex items-center gap-2 text-xs text-slate-400 hover:text-emerald-300 transition">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="text-slate-400">
