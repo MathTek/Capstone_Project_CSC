@@ -59,7 +59,6 @@ def calculate_score(pii_list):
         source_mult = PII_WEIGHTS_BY_SOURCE.get(item.source, 1)
 
         if item.occurrence <= 0:
-            deduction = 0
             continue
 
         deduction = weight * occurrences_mult * source_mult
