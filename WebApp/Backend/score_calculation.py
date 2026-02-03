@@ -55,14 +55,14 @@ def calculate_score(pii_list):
     for item in pii_list:
 
         weight = PII_WEIGHTS_BY_TYPE.get(item.type, 0)
-        occurencies_mult = occurences_multiplier(item.occurrence)
+        occurrences_mult = occurences_multiplier(item.occurrence)
         source_mult = PII_WEIGHTS_BY_SOURCE.get(item.source, 1)
 
         if item.occurrence <= 0:
             deduction = 0
             continue
 
-        deduction = weight * occurencies_mult * source_mult
+        deduction = weight * occurrences_mult * source_mult
         total_score -= deduction
 
     return total_score
