@@ -66,9 +66,7 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     return {"access_token": token, "token_type": "bearer", "user_id": db_user.id, "display_content": db_user.display_consent}
 
 @app.post("/calculate_score")
-def calculate_score_endpoint(
-    payload: ScoreRequest,
-    db: Session = Depends(get_db)
-):
+def calculate_score_endpoint(payload: ScoreRequest):
     score = calculate_score(payload.pii_list)
     return {"score": score}
+

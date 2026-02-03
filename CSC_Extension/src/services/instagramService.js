@@ -1,4 +1,6 @@
+import { each } from 'chart.js/helpers';
 import { detectPII } from '../utils/piiDetector.js';
+import { split } from 'postcss/lib/list';
 
 export async function checkInstagramPage(status) {
   return new Promise((resolve) => {
@@ -22,6 +24,32 @@ export async function checkInstagramPage(status) {
     });
   });
 }
+
+async function sendPIIList(piiList) {
+  try {
+    const response = await fetch("http://localhost:8000/calculate_score", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ pii_list: piiList })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("Score calculation failed:", errorData);
+      return null;
+    }
+
+    const data = await response.json();
+    return data.score;
+
+  } catch (err) {
+    console.error("Network or server error:", err);
+    return null;
+  }
+}
+
 
 export async function extractProfileData(status, bio, posts, profileInfo, results, numberOfPII, numberOfEmails, numberOfPhoneNumbers, numberOfCreditCards, loading, highlights, pii_types_number) {
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
@@ -70,11 +98,12 @@ export async function extractProfileData(status, bio, posts, profileInfo, result
               loading.set(false);
               return;
             }
-            
+
+
             const bioText = response.bio || "Aucune bio trouvée";
             bio.set(bioText);
-            
             const bioResults = detectPII(bioText, "bio");
+            console.log("Bio PII results:", bioResults);
             results.set(bioResults);
 
             const highlightsData = response.stories || [];
@@ -96,10 +125,34 @@ export async function extractProfileData(status, bio, posts, profileInfo, result
               }
             }
 
+            
             results.subscribe(currentResults => {
+              console.log("All PII results:", currentResults);
+              let piiList = [];
+
+              currentResults.forEach(element => {
+                const src = element.source.split(" ")[0];
+                const existingItem = piiList.find(item => item.type === element.type && item.source === src);
+                if (existingItem) {
+                  existingItem.occurrence += 1;
+                } else {
+                  piiList.push({ type: element.type, occurrence: 1, source: src });
+                }
+              });
+
+              console.log("Aggregated PII list:", piiList);
+              try {
+                sendPIIList(piiList).then(score => {
+                  console.log("Calculated score:", score);
+                });
+              } catch (error) {
+                console.error("Error sending PII list:", error);
+              }
+
+
+
               numberOfPII.set(currentResults.length);
               
-              let emails = 0, phones = 0, creditCards = 0;
               
               const piiTypeCounts = [];
 
