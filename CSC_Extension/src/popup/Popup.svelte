@@ -10,7 +10,7 @@
   import Footer from "../components/Footer.svelte";
   import ScanButton from "../components/ScanButton.svelte";
   import NavigatePrompt from "../components/NavigatePrompt.svelte";
-  import { extractProfileData, refreshProfileData, reloadInstagramPage, checkInstagramPage } from "../services/instagramService.js";
+  import { extractProfileData, reloadInstagramPage, checkInstagramPage } from "../services/instagramService.js";
   import { login, signup, logout } from "../utils/login.js";  
   import { AuthStorageService } from "../services/authStorage.js";
   import Auth from "../components/Auth.svelte";
@@ -73,10 +73,6 @@
       console.error("Signup error:", error);
       return false;
     }
-  }
-
-  function handleRefreshData() {
-    refreshProfileData(status, bio, posts, profileInfo, results, numberOfPII, numberOfEmails, numberOfPhoneNumbers, numberOfCreditCards, loading, highlights);
   }
 
   function handleReloadInstagramPage() {
@@ -157,13 +153,9 @@
           isOnInstagram={$isOnInstagram}
         />
 
-        <!-- Actions (only shown after scan) -->
+        <!-- Bio (only shown after scan) -->
         {#if $hasScanned}
-          <Actions 
-            refreshData={handleRefreshData} 
-            reloadInstagramPage={handleReloadInstagramPage} 
-            loading={$loading} 
-          />
+          <Bio bio={$bio} />
         {/if}
 
         {#if !$loading && $hasScanned}
@@ -182,15 +174,13 @@
           {:else}
             <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
               <p class="font-bold">Consent Not Given</p>
-              <p>User has not given consent to display PII results.</p>
+              <p>You didn't give your consent to display PII results.</p>
+              <p>Please check your settings to enable PII result display.</p> 
             </div>
           {/if}
         {/if}
 
-        <!-- Bio (only shown after scan) -->
-        {#if $hasScanned}
-          <Bio bio={$bio} />
-        {/if}
+        
 
         <!-- Footer -->
         <Footer 

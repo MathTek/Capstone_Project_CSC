@@ -23,6 +23,32 @@ export async function checkInstagramPage(status) {
   });
 }
 
+async function sendPIIList(piiList) {
+  try {
+    const response = await fetch("http://localhost:8000/calculate_score", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ pii_list: piiList })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("Score calculation failed:", errorData);
+      return null;
+    }
+
+    const data = await response.json();
+    return data.score;
+
+  } catch (err) {
+    console.error("Network or server error:", err);
+    return null;
+  }
+}
+
+
 export async function extractProfileData(status, bio, posts, profileInfo, results, numberOfPII, numberOfEmails, numberOfPhoneNumbers, numberOfCreditCards, loading, highlights, pii_types_number) {
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
     const currentTab = tabs[0];
@@ -70,11 +96,12 @@ export async function extractProfileData(status, bio, posts, profileInfo, result
               loading.set(false);
               return;
             }
-            
+
+
             const bioText = response.bio || "Aucune bio trouvée";
             bio.set(bioText);
-            
             const bioResults = detectPII(bioText, "bio");
+            console.log("Bio PII results:", bioResults);
             results.set(bioResults);
 
             const highlightsData = response.stories || [];
@@ -96,10 +123,34 @@ export async function extractProfileData(status, bio, posts, profileInfo, result
               }
             }
 
+            
             results.subscribe(currentResults => {
+              console.log("All PII results:", currentResults);
+              let piiList = [];
+
+              currentResults.forEach(element => {
+                const src = element.source.split(" ")[0];
+                const existingItem = piiList.find(item => item.type === element.type && item.source === src);
+                if (existingItem) {
+                  existingItem.occurrence += 1;
+                } else {
+                  piiList.push({ type: element.type, occurrence: 1, source: src });
+                }
+              });
+
+              console.log("Aggregated PII list:", piiList);
+              sendPIIList(piiList)
+                .then(score => {
+                  console.log("Calculated score:", score);
+                })
+                .catch(error => {
+                  console.error("Error sending PII list:", error);
+                });
+
+
+
               numberOfPII.set(currentResults.length);
               
-              let emails = 0, phones = 0, creditCards = 0;
               
               const piiTypeCounts = [];
 
@@ -134,110 +185,6 @@ export async function extractProfileData(status, bio, posts, profileInfo, result
         }
       );
     }, 1500);
-  });
-}
-
-export async function refreshProfileData(status, bio, posts, profileInfo, results, numberOfPII, numberOfEmails, numberOfPhoneNumbers, numberOfCreditCards, loading, highlights) {
-  loading.set(true);
-  status.set("New extraction in progress...");
-  bio.set("Rechargement...");
-  posts.set([]);
-  results.set([]);
-  
-  chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-    const currentTab = tabs[0];
-    
-    try {
-      await chrome.scripting.executeScript({
-        target: { tabId: currentTab.id },
-        files: ['content.js']
-      });
-    } catch (error) {
-      
-    }
-    
-    setTimeout(() => {
-      const refreshTimeout = setTimeout(() => {
-        status.set("Timeout during refresh");
-        loading.set(false);
-      }, 8000);
-      
-      chrome.tabs.sendMessage(
-        currentTab.id,
-        { action: "getFullProfile" },
-        (response) => {
-          clearTimeout(refreshTimeout);
-          
-          if (chrome.runtime.lastError) {
-            status.set("Error: " + chrome.runtime.lastError.message);
-            loading.set(false);
-            return;
-          }
-          
-          if (response) {
-            if (response.error) {
-              status.set("Error: " + response.error);
-              loading.set(false);
-              return;
-            }
-            
-            const bioText = response.bio || "Aucune bio trouvée";
-            bio.set(bioText);
-            
-            const bioResults = detectPII(bioText, "bio");
-            results.set(bioResults);
-
-            const postsData = response.posts || [];
-            posts.set(postsData);
-
-            if (postsData.length !== 0) {
-              for (const post of postsData) {
-                results.update(n => [...n, ...detectPII(post.content, "post "+ post.index)]);
-              }
-            }
-
-            results.subscribe(currentResults => {
-              numberOfPII.set(currentResults.length);
-              
-              let emails = 0, phones = 0, creditCards = 0;
-              
-              currentResults.forEach(element => {
-                switch (element.type) {
-                  case "email":
-                    emails++;
-                    break;
-                  case "phone":
-                    phones++;
-                    break;
-                  case "credit_card":
-                    creditCards++;
-                    break;
-                }
-              });
-
-              numberOfEmails.set(emails);
-              numberOfPhoneNumbers.set(phones);
-              numberOfCreditCards.set(creditCards);
-            });
-
-            profileInfo.set({
-              username: response.username,
-              followers: response.followers,
-              following: response.following,
-              postsCount: response.postsCount || postsData.length,
-              url: response.url
-            });
-            
-            const postsCount = postsData.length;
-            const bioStatus = response.bio ? 'Bio' : 'No Bio';
-            status.set(`Refresh completed: ${bioStatus}, ${postsCount} posts found`);
-          } else {
-            status.set("Refresh failed - No data received");
-          }
-          loading.set(false);
-        }
-      );
-    }, 800);
   });
 }
 
