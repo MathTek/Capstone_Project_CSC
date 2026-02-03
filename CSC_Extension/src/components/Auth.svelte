@@ -41,10 +41,6 @@
             return;
         }
 
-        if (!display_consent) {
-            display_consent = false;
-        }
-
         loading = true;
         error = "";
         
