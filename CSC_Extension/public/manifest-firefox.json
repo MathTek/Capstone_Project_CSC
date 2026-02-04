@@ -1,0 +1,42 @@
+{
+  "manifest_version": 2,
+  "name": "CSC Extension",
+  "description": "Capstone Project - Advanced Analytics Dashboard Extension",
+  "version": "1.0.0",
+  
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_title": "CSC Extension - Dashboard",
+    "default_icon": "icon.svg"
+  },
+  
+  "background": {
+    "scripts": ["background.js"]
+  },
+  
+  "content_scripts": [
+    {
+      "matches": ["https://www.instagram.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  
+  "permissions": [
+    "storage",
+    "tabs",
+    "webRequest",
+    "<all_urls>",
+    "http://localhost:8000/*",
+    "https://www.instagram.com/*"
+  ],
+  
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "csc-extension@capstone.com",
+      "strict_min_version": "109.0"
+    }
+  },
+  
+  "content_security_policy": "script-src 'self'; object-src 'self'"
+}

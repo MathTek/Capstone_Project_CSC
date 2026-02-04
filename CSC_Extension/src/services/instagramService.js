@@ -1,9 +1,48 @@
 import { detectPII } from '../utils/piiDetector.js';
 import { AuthStorageService } from './authStorage.js';
 
+
+const browserAPI = (typeof browser !== "undefined" && browser.runtime) ? browser : chrome;
+const isFirefox = typeof browser !== "undefined" && browser.runtime;
+
+
+async function browserFetch(url, options) {
+
+  if (isFirefox) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open(options.method || 'GET', url);
+      
+      if (options.headers) {
+        Object.entries(options.headers).forEach(([key, value]) => {
+          xhr.setRequestHeader(key, value);
+        });
+      }
+      
+      xhr.onload = () => {
+        resolve({
+          ok: xhr.status >= 200 && xhr.status < 300,
+          status: xhr.status,
+          json: async () => JSON.parse(xhr.responseText),
+          text: async () => xhr.responseText
+        });
+      };
+      
+      xhr.onerror = () => reject(new Error('Network request failed'));
+      xhr.ontimeout = () => reject(new Error('Request timeout'));
+      xhr.timeout = 10000;
+      
+      xhr.send(options.body);
+    });
+  }
+  
+ 
+  return await fetch(url, options);
+}
+
 export async function checkInstagramPage(status) {
   return new Promise((resolve) => {
-    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+    browserAPI.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
       const currentTab = tabs[0];
       
       if (!currentTab.url.includes('instagram.com')) {
@@ -31,7 +70,7 @@ async function sendPIIList(piiList) {
       console.error("User ID not found in auth state");
       return null;
     }
-    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/calculate_score`, {
+    const response = await browserFetch(`${import.meta.env.VITE_BACKEND_URL}/calculate_score`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -55,8 +94,8 @@ async function sendPIIList(piiList) {
 }
 
 
-export async function extractProfileData(status, bio, posts, profileInfo, results, numberOfPII, numberOfEmails, numberOfPhoneNumbers, numberOfCreditCards, loading, highlights, pii_types_number) {
-  chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+export async function extractProfileData(status, bio, posts, profileInfo, results, numberOfPII,loading, highlights, pii_types_number) {
+  browserAPI.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
     const currentTab = tabs[0];
     
     if (!currentTab.url.includes('instagram.com')) {
@@ -68,7 +107,7 @@ export async function extractProfileData(status, bio, posts, profileInfo, result
     status.set("Checking content script...");
     
     try {
-      await chrome.scripting.executeScript({
+      await browserAPI.scripting.executeScript({
         target: { tabId: currentTab.id },
         files: ['content.js']
       });
@@ -84,14 +123,14 @@ export async function extractProfileData(status, bio, posts, profileInfo, result
         loading.set(false);
       }, 10000); 
       
-      chrome.tabs.sendMessage(
+      browserAPI.tabs.sendMessage(
         currentTab.id,
         { action: "getFullProfile" },
         (response) => {
           clearTimeout(messageTimeout);
           
-          if (chrome.runtime.lastError) {
-            status.set("Error: " + chrome.runtime.lastError.message);
+          if (browserAPI.runtime.lastError) {
+            status.set("Error: " + browserAPI.runtime.lastError.message);
             loading.set(false);
             return;
           }
@@ -200,8 +239,8 @@ export async function extractProfileData(status, bio, posts, profileInfo, result
 }
 
 export function reloadInstagramPage(status, loading) {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    chrome.tabs.reload(tabs[0].id, () => {
+  browserAPI.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    browserAPI.tabs.reload(tabs[0].id, () => {
       status.set("Page reloaded. Wait for reload then click Refresh.");
       loading.set(false);
     });

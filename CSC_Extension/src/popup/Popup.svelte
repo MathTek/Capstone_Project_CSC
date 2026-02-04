@@ -23,8 +23,6 @@
   const status = writable("Checking Instagram page...");
   let results = writable([]);
   const numberOfPII = writable(0);
-  const numberOfEmails = writable(0);
-  const numberOfPhoneNumbers = writable(0);
   const numberOfCreditCards = writable(0);
   const hasScanned = writable(false);
   const isOnInstagram = writable(false);
@@ -36,7 +34,7 @@
 
   function handleStartScan() {
     hasScanned.set(true);
-    extractProfileData(status, bio, posts, profileInfo, results, numberOfPII, numberOfEmails, numberOfPhoneNumbers, numberOfCreditCards, loading, highlights, pii_types_number);
+    extractProfileData(status, bio, posts, profileInfo, results, numberOfPII, loading, highlights, pii_types_number);
   }
 
   async function handleLogin(username, password) {
@@ -165,7 +163,6 @@
           <Stats 
             numberOfPII={$numberOfPII}
             pii_types_number={$pii_types_number}
-          
           />
           {#if $userInfo.display_content}
             <!-- PII Results -->
@@ -181,10 +178,6 @@
           {/if}
           <ScoreDisplay score={$profileInfo} />
         {/if}
-
-
-
-        
 
         <!-- Footer -->
         <Footer 

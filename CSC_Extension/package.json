@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite build --watch",
     "build": "vite build",
+    "build:firefox": "vite build && cp public/manifest-firefox.json dist/manifest.json",
     "preview": "vite preview"
   },
   "devDependencies": {
