@@ -1,6 +1,6 @@
 <script>
   import { fade } from 'svelte/transition';
-  export let numberOfPII = 0;
+  export let numberOfPII;
   export let pii_types_number = [];
 
   const format = (n) => (typeof n === 'number' ? n.toLocaleString() : n);

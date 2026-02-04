@@ -300,8 +300,11 @@ async function getFullProfileDataWithStories() {
   return profileData;
 }
 
-if (typeof chrome !== "undefined" && chrome.runtime) {
-  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+// Cross-browser compatibility: use browser API (Firefox) or chrome API (Chrome)
+const browserAPI = (typeof browser !== "undefined" && browser.runtime) ? browser : chrome;
+
+if (browserAPI && browserAPI.runtime) {
+  browserAPI.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   
   

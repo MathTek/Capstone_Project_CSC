@@ -1,8 +1,10 @@
+const browserAPI = (typeof browser !== "undefined" && browser.runtime) ? browser : chrome;
+
 export class AuthStorageService {
   
   static async saveAuthState(token, userInfo) {
     try {
-      await chrome.storage.local.set({
+      await browserAPI.storage.local.set({
         authToken: token,
         userInfo: userInfo,
         authTimestamp: Date.now()
@@ -14,7 +16,7 @@ export class AuthStorageService {
 
   static async getAuthState() {
     try {
-      const result = await chrome.storage.local.get(['authToken', 'userInfo', 'authTimestamp']);
+      const result = await browserAPI.storage.local.get(['authToken', 'userInfo', 'authTimestamp']);
       
       if (!result.authToken || !result.authTimestamp) {
         return { isAuthenticated: false };
@@ -40,7 +42,7 @@ export class AuthStorageService {
 
   static async clearAuthState() {
     try {
-      await chrome.storage.local.remove(['authToken', 'userInfo', 'authTimestamp']);
+      await browserAPI.storage.local.remove(['authToken', 'userInfo', 'authTimestamp']);
     } catch (error) {
       console.error(" Error clearing auth state:", error);
     }
