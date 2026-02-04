@@ -1,4 +1,5 @@
 import { detectPII } from '../utils/piiDetector.js';
+import { AuthStorageService } from './authStorage.js';
 
 export async function checkInstagramPage(status) {
   return new Promise((resolve) => {
@@ -25,12 +26,17 @@ export async function checkInstagramPage(status) {
 
 async function sendPIIList(piiList) {
   try {
-    const response = await fetch("http://localhost:8000/calculate_score", {
+    const userId = (await AuthStorageService.getAuthState()).userInfo.id;
+    if (!userId) {
+      console.error("User ID not found in auth state");
+      return null;
+    }
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/calculate_score`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ pii_list: piiList })
+      body: JSON.stringify({ pii_list: piiList, user_id: userId })
     });
 
     if (!response.ok) {
@@ -141,7 +147,11 @@ export async function extractProfileData(status, bio, posts, profileInfo, result
               console.log("Aggregated PII list:", piiList);
               sendPIIList(piiList)
                 .then(score => {
-                  console.log("Calculated score:", score);
+                  if (score !== null) {
+                    profileInfo.update(info => ({ ...info, last_score: score }));
+                  } else {
+                    console.error("Failed to receive score from server");
+                  }
                 })
                 .catch(error => {
                   console.error("Error sending PII list:", error);
@@ -172,7 +182,8 @@ export async function extractProfileData(status, bio, posts, profileInfo, result
               url: response.url
             });
 
-            
+            console.log("Profile Info:", {profileInfo});
+
             const postsCount = postsData.length;
             const bioStatus = response.bio ? 'Bio' : 'No Bio';
             status.set(`Extraction completed: ${bioStatus}, ${postsCount} posts and ${highlightsData.length} highlights were found`);

@@ -14,6 +14,7 @@
   import { login, signup, logout } from "../utils/login.js";  
   import { AuthStorageService } from "../services/authStorage.js";
   import Auth from "../components/Auth.svelte";
+  import ScoreDisplay from "../components/ScoreDisplay.svelte";
 
   const bio = writable("No bio scanned yet");
   const posts = writable([]);
@@ -178,7 +179,10 @@
               <p>Please check your settings to enable PII result display.</p> 
             </div>
           {/if}
+          <ScoreDisplay score={$profileInfo} />
         {/if}
+
+
 
         
 
