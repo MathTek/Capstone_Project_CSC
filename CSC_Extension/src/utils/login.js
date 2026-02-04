@@ -3,7 +3,7 @@ import { AuthStorageService } from '../services/authStorage.js';
 
 export async function login(username, password) {
   try {
-    const res = await fetch("http://localhost:8000/login", {
+    const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password })
@@ -31,7 +31,7 @@ export async function login(username, password) {
 
 export async function signup(username, email, password, display_consent, cgu) {
   try {
-    const res = await fetch("http://localhost:8000/register", {
+    const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, email, password, display_consent, cgu })

@@ -31,7 +31,7 @@ async function sendPIIList(piiList) {
       console.error("User ID not found in auth state");
       return null;
     }
-    const response = await fetch("http://localhost:8000/calculate_score", {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/calculate_score`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -147,7 +147,11 @@ export async function extractProfileData(status, bio, posts, profileInfo, result
               console.log("Aggregated PII list:", piiList);
               sendPIIList(piiList)
                 .then(score => {
-                  console.log("Calculated score:", score);
+                  if (score !== null) {
+                    profileInfo.update(info => ({ ...info, last_score: score }));
+                  } else {
+                    console.error("Failed to receive score from server");
+                  }
                 })
                 .catch(error => {
                   console.error("Error sending PII list:", error);
@@ -178,7 +182,8 @@ export async function extractProfileData(status, bio, posts, profileInfo, result
               url: response.url
             });
 
-            
+            console.log("Profile Info:", {profileInfo});
+
             const postsCount = postsData.length;
             const bioStatus = response.bio ? 'Bio' : 'No Bio';
             status.set(`Extraction completed: ${bioStatus}, ${postsCount} posts and ${highlightsData.length} highlights were found`);

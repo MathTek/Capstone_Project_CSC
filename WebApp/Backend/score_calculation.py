@@ -107,5 +107,6 @@ def save_scan_result(user_id, pii_list, score):
         src_highlights_count=src_highlights_count,
         score=score
     )
+    
     db_session.add(scan_result)
     db_session.commit()

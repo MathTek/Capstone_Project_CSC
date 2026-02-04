@@ -65,7 +65,6 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
 
 @app.post("/calculate_score")
 def calculate_score_endpoint(payload: ScoreRequest):
-    print("Received pii:", payload.pii_list)
     score = calculate_score(payload.pii_list)
     save_scan_result(payload.user_id, payload.pii_list, score)
     return {"score": score}
