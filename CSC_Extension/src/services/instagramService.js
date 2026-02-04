@@ -1,4 +1,5 @@
 import { detectPII } from '../utils/piiDetector.js';
+import { AuthStorageService } from './authStorage.js';
 
 export async function checkInstagramPage(status) {
   return new Promise((resolve) => {
@@ -25,12 +26,17 @@ export async function checkInstagramPage(status) {
 
 async function sendPIIList(piiList) {
   try {
+    const userId = (await AuthStorageService.getAuthState()).userInfo.id;
+    if (!userId) {
+      console.error("User ID not found in auth state");
+      return null;
+    }
     const response = await fetch("http://localhost:8000/calculate_score", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ pii_list: piiList })
+      body: JSON.stringify({ pii_list: piiList, user_id: userId })
     });
 
     if (!response.ok) {

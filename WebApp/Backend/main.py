@@ -8,6 +8,10 @@ from auth import create_access_token
 from pydantic import BaseModel
 from score_calculation import calculate_score
 from typing import List, Literal
+from score_calculation import save_scan_result
+from db import get_db
+
+
 app = FastAPI()
 
 app.add_middleware(
@@ -24,6 +28,7 @@ class PIIItem(BaseModel):
 
 class ScoreRequest(BaseModel):
     pii_list: List[PIIItem]
+    user_id: int
 
 class UserCreate(BaseModel):
     username: str
@@ -35,13 +40,6 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     username: str
     password: str
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 @app.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
@@ -67,6 +65,8 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
 
 @app.post("/calculate_score")
 def calculate_score_endpoint(payload: ScoreRequest):
+    print("Received pii:", payload.pii_list)
     score = calculate_score(payload.pii_list)
+    save_scan_result(payload.user_id, payload.pii_list, score)
     return {"score": score}
 

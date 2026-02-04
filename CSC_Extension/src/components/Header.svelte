@@ -11,9 +11,11 @@
     </h1>
 
     <div class="mt-2">
+      {#if profileInfo.username}
       <span class="text-base md:text-lg font-semibold">
         Hello, {profileInfo.username || 'User'}!
       </span>
+      {/if}
     </div>
 
     {#if instagramPageInfo.username}
