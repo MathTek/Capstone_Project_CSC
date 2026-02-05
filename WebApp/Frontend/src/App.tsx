@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
 import Navigation from './components/Navigation';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
@@ -10,44 +10,54 @@ import RiskVisualization from './pages/RiskVisualization';
 import Education from './pages/Education';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ScanHistory from './pages/ScanHistory';
+import ScanDetails from './pages/ScanDetails';
 
 function AppContent() {
-  const [currentPage, setCurrentPage] = useState('home');
-  const { isAuthenticated } = useAuth();
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'login':
-        return <Login onNavigate={setCurrentPage} />;
-      case 'register':
-        return <Register onNavigate={setCurrentPage} />;
-      case 'home':
-        return <Home onNavigate={setCurrentPage} />;
-      case 'dashboard':
-        return (
-          <ProtectedRoute onNavigate={setCurrentPage}>
-            <DashboardInteractive />
-          </ProtectedRoute>
-        );
-      case 'risks':
-        return (
-          <ProtectedRoute onNavigate={setCurrentPage}>
-            <RiskVisualization />
-          </ProtectedRoute>
-        );
-      case 'education':
-        return <Education />;
-      default:
-        return <Home onNavigate={setCurrentPage} />;
-    }
-  };
+  const location = useLocation();
+  const hideNavigation = location.pathname === '/login' || location.pathname === '/register';
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {currentPage !== 'login' && currentPage !== 'register' && (
-        <Navigation currentPage={currentPage} onNavigate={setCurrentPage} />
-      )}
-      {renderPage()}
+      {!hideNavigation && <Navigation />}
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardInteractive />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/scan-history"
+          element={
+            <ProtectedRoute>
+              <ScanHistory />
+            </ProtectedRoute>
+          }
+        />
+        {/* <Route
+          path="/risks"
+          element={
+            <ProtectedRoute>
+              <RiskVisualization />
+            </ProtectedRoute>
+          }
+        /> */}
+        <Route
+          path="/scan/:id"
+          element={
+            <ProtectedRoute>
+              <ScanDetails />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/education" element={<Education />} />
+      </Routes>
     </div>
   );
 }
@@ -56,7 +66,9 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AppContent />
+        <Router>
+          <AppContent />
+        </Router>
       </AuthProvider>
     </ThemeProvider>
   );

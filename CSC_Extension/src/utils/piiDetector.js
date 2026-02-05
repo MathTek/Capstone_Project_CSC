@@ -22,8 +22,7 @@ export function detectPII(text, source) {
     { type: "id_card", pattern: /\b\d{12}\b/g },
     
 
-    { type: "iban", pattern: /\b[A-Z]{2}\d{2}[\s\-]?[A-Z0-9]{4}[\s\-]?[A-Z0-9]{4}[\s\-]?[A-Z0-9]{4}[\s\-]?[A-Z0-9]{4}[\s\-]?[A-Z0-9]{0,4}\b/gi },
-    
+    { type: "iban", pattern: /\b[A-Z]{2}\d{2}(?:[\s\-]?[A-Z0-9]{4}){3,6}[\s\-]?[A-Z0-9]{1,4}\b/gi },    
 
     { type: "ip_address", pattern: /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g },
     

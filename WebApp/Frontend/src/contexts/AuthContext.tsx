@@ -3,6 +3,7 @@ import { loginUser, registerUser, LoginResponse, RegisterRequest, APIError } fro
 
 interface AuthContextType {
   isAuthenticated: boolean;
+  isLoading: boolean;
   userId: number | null;
   displayConsent: boolean;
   login: (username: string, password: string) => Promise<void>;
@@ -15,6 +16,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<number | null>(null);
   const [displayConsent, setDisplayConsent] = useState(false);
 
@@ -28,6 +30,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserId(parseInt(storedUserId, 10));
       setDisplayConsent(storedConsent === 'true');
     }
+    
+    setIsLoading(false);
   }, []);
 
   const login = async (username: string, password: string) => {
@@ -79,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{
       isAuthenticated,
+      isLoading,
       userId,
       displayConsent,
       login,
