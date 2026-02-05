@@ -2,7 +2,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from db import SessionLocal, engine, Base
-from models import User
+from models import User, ScanPiiDetected, UsersScansResults, PiiFeedbacks
 from utils import hash_password, verify_password
 from auth import create_access_token
 from pydantic import BaseModel
@@ -69,3 +69,18 @@ def calculate_score_endpoint(payload: ScoreRequest):
     save_scan_result(payload.user_id, payload.pii_list, score)
     return {"score": score}
 
+@app.get("/get_scans_by_userid/{user_id}")
+def get_scans_by_userid(user_id: int, db: Session = Depends(get_db)):
+    scans = db.query(UsersScansResults).filter(UsersScansResults.user_id == user_id).all()
+    return {"scans": scans}
+
+@app.delete("/delete_scan_by_scanid/{scan_id}")
+def delete_scan_by_scanid(scan_id: int, db: Session = Depends(get_db)):
+    db.query(UsersScansResults).filter(UsersScansResults.id == scan_id).delete()
+    db.commit()
+    return {"msg": "Scan deleted successfully"}
+
+@app.get("/get_pii_details_by_scanid/{scan_id}")
+def get_pii_details_by_scanid(scan_id: int, db: Session = Depends(get_db)):
+    pii_details = db.query(ScanPiiDetected).filter(ScanPiiDetected.scan_id == scan_id).all()
+    return {"pii_details": pii_details}

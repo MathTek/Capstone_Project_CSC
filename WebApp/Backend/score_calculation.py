@@ -1,5 +1,5 @@
 from db import get_db
-from models import UsersScansResults
+from models import UsersScansResults, ScanPiiDetected
 
 PII_WEIGHTS_BY_TYPE = {
   "credit_card": 40,
@@ -83,6 +83,27 @@ def found_count_by_source(pii_list):
 
     return src_counts
 
+def send_to_db(scan_id, type, occurrence, source):
+
+    db_session = next(get_db())
+    detail = ScanPiiDetected(
+        scan_id=scan_id,
+        pii_type=str(type),
+        occurrences=occurrence,
+        source=str(source)
+    )
+    db_session.add(detail)
+    db_session.commit()
+
+def save_scan_details(scan_id, pii_list):
+
+    for item in pii_list:
+        type = item.type
+        occurrence = item.occurrence
+        source = item.source
+        send_to_db(scan_id, type, occurrence, source)
+    
+
 def save_scan_result(user_id, pii_list, score):
 
     db_session = next(get_db())
@@ -107,6 +128,8 @@ def save_scan_result(user_id, pii_list, score):
         src_highlights_count=src_highlights_count,
         score=score
     )
-    
+
     db_session.add(scan_result)
     db_session.commit()
+    db_session.refresh(scan_result)
+    save_scan_details(scan_result.id, pii_list)
