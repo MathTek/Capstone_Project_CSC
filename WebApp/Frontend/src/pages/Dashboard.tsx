@@ -86,6 +86,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                   <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                     {mockProfile.username}
                   </h2>
+
                   <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400 mt-1">
                     <span className="flex items-center space-x-1">
                       <Image className="w-4 h-4" />

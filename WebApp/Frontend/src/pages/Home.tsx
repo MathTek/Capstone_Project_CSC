@@ -1,4 +1,4 @@
-import { Shield, Search, BarChart3, Smartphone, ArrowRight } from 'lucide-react';
+import { Shield, Search, BarChart3, BookOpen, ArrowRight } from 'lucide-react';
 
 interface HomeProps {
   onNavigate: (page: string) => void;
@@ -27,7 +27,7 @@ export default function Home({ onNavigate }: HomeProps) {
             onClick={() => onNavigate('dashboard')}
             className="inline-flex items-center px-8 py-4 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors shadow-lg hover:shadow-xl space-x-2"
           >
-            <span>Button to dashboard</span>
+            <span>View Demo Dashboard</span>
             <ArrowRight className="w-5 h-5" />
           </button>
         </div>
@@ -72,7 +72,7 @@ export default function Home({ onNavigate }: HomeProps) {
             <div className="text-center">
               <div className="flex justify-center mb-4">
                 <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <Smartphone className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                  <BookOpen className="w-8 h-8 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
@@ -136,10 +136,10 @@ export default function Home({ onNavigate }: HomeProps) {
 
           <div className="mt-16 text-center">
             <button
-              onClick={() => onNavigate('')}
+              onClick={() => onNavigate('dashboard')}
               className="inline-flex items-center px-8 py-4 bg-gray-900 hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 text-white font-semibold rounded-lg transition-colors space-x-2"
             >
-              <span>Try the Demo (Extension)</span>
+              <span>Try the Demo</span>
               <ArrowRight className="w-5 h-5" />
             </button>
           </div>
