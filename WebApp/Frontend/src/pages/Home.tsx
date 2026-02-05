@@ -27,7 +27,7 @@ export default function Home({ onNavigate }: HomeProps) {
             onClick={() => onNavigate('dashboard')}
             className="inline-flex items-center px-8 py-4 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors shadow-lg hover:shadow-xl space-x-2"
           >
-            <span>View Demo Dashboard</span>
+            <span>View my Dashboard</span>
             <ArrowRight className="w-5 h-5" />
           </button>
         </div>
@@ -139,7 +139,7 @@ export default function Home({ onNavigate }: HomeProps) {
               onClick={() => onNavigate('dashboard')}
               className="inline-flex items-center px-8 py-4 bg-gray-900 hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 text-white font-semibold rounded-lg transition-colors space-x-2"
             >
-              <span>Try the Demo</span>
+              <span>Try it</span>
               <ArrowRight className="w-5 h-5" />
             </button>
           </div>
