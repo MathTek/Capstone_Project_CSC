@@ -1,10 +1,9 @@
 import { Shield, Search, BarChart3, BookOpen, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-interface HomeProps {
-  onNavigate: (page: string) => void;
-}
+export default function Home() {
+  const navigate = useNavigate();
 
-export default function Home({ onNavigate }: HomeProps) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
@@ -24,7 +23,7 @@ export default function Home({ onNavigate }: HomeProps) {
             An educational tool to help families understand the risks of sharing personal data online
           </p>
           <button
-            onClick={() => onNavigate('dashboard')}
+            onClick={() => navigate('/dashboard')}
             className="inline-flex items-center px-8 py-4 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors shadow-lg hover:shadow-xl space-x-2"
           >
             <span>View my Dashboard</span>
@@ -136,7 +135,7 @@ export default function Home({ onNavigate }: HomeProps) {
 
           <div className="mt-16 text-center">
             <button
-              onClick={() => onNavigate('dashboard')}
+              onClick={() => navigate('/dashboard')}
               className="inline-flex items-center px-8 py-4 bg-gray-900 hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 text-white font-semibold rounded-lg transition-colors space-x-2"
             >
               <span>Try it</span>

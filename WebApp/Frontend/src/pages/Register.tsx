@@ -1,13 +1,10 @@
 import { useState } from 'react';
 import { Shield, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { APIError } from '../services/api';
 
-interface RegisterProps {
-  onNavigate: (page: string) => void;
-}
-
-export default function Register({ onNavigate }: RegisterProps) {
+export default function Register() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,6 +15,7 @@ export default function Register({ onNavigate }: RegisterProps) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const { register } = useAuth();
+  const navigate = useNavigate();
 
   const isFormValid = username.trim() !== '' && email.trim() !== '' && password.trim() !== '' && termsChecked;
 
@@ -50,7 +48,7 @@ export default function Register({ onNavigate }: RegisterProps) {
       setSuccess(true);
 
       setTimeout(() => {
-        onNavigate('login');
+        navigate('/login');
       }, 2000);
     } catch (err) {
       if (err instanceof APIError) {
@@ -156,7 +154,7 @@ export default function Register({ onNavigate }: RegisterProps) {
                   I agree to the{' '}
                   <button
                     type="button"
-                    onClick={() => onNavigate('education')}
+                    onClick={() => navigate('/education')}
                     className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
                     disabled={loading || success}
                   >

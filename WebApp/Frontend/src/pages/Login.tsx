@@ -1,18 +1,16 @@
 import { useState } from 'react';
 import { Shield, AlertCircle, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { APIError } from '../services/api';
 
-interface LoginProps {
-  onNavigate: (page: string) => void;
-}
-
-export default function Login({ onNavigate }: LoginProps) {
+export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const navigate = useNavigate();
 
   const isFormValid = username.trim() !== '' && password.trim() !== '';
 
@@ -29,7 +27,7 @@ export default function Login({ onNavigate }: LoginProps) {
 
     try {
       await login(username, password);
-      onNavigate('dashboard');
+      navigate('/dashboard');
     } catch (err) {
       if (err instanceof APIError) {
         setError(err.message);
@@ -114,7 +112,7 @@ export default function Login({ onNavigate }: LoginProps) {
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Don't have an account?{' '}
               <button
-                onClick={() => onNavigate('register')}
+                onClick={() => navigate('/register')}
                 className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
               >
                 Create account

@@ -1,33 +1,32 @@
 import { Menu, X, Sun, Moon, Shield, LogOut } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 
-interface NavigationProps {
-  currentPage: string;
-  onNavigate: (page: string) => void;
-}
-
-export default function Navigation({ currentPage, onNavigate }: NavigationProps) {
+export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const { isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const navItems = [
-    { id: 'home', label: 'Home' },
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'risks', label: 'Risk Analysis' },
-    { id: 'education', label: 'Learn More' },
+    { id: '/', label: 'Home' },
+    { id: '/dashboard', label: 'Dashboard' },
+    { id: '/risks', label: 'Risk Analysis' },
+    { id: '/scan-history', label: 'Scan History' },
+    { id: '/education', label: 'Learn More' },
   ];
 
   const handleNavigate = (page: string) => {
-    onNavigate(page);
+    navigate(page);
     setIsMenuOpen(false);
   };
 
   const handleLogout = () => {
     logout();
-    onNavigate('login');
+    navigate('/login');
     setIsMenuOpen(false);
   };
 
@@ -46,7 +45,7 @@ export default function Navigation({ currentPage, onNavigate }: NavigationProps)
                 key={item.id}
                 onClick={() => handleNavigate(item.id)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  currentPage === item.id
+                  location.pathname === item.id
                     ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
@@ -72,7 +71,7 @@ export default function Navigation({ currentPage, onNavigate }: NavigationProps)
               </button>
             ) : (
               <button
-                onClick={() => handleNavigate('login')}
+                onClick={() => handleNavigate('/login')}
                 className="ml-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded-lg font-medium text-sm transition-colors"
               >
                 Login
@@ -107,7 +106,7 @@ export default function Navigation({ currentPage, onNavigate }: NavigationProps)
                 key={item.id}
                 onClick={() => handleNavigate(item.id)}
                 className={`w-full text-left px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  currentPage === item.id
+                  location.pathname === item.id
                     ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
@@ -126,7 +125,7 @@ export default function Navigation({ currentPage, onNavigate }: NavigationProps)
               </button>
             ) : (
               <button
-                onClick={() => handleNavigate('login')}
+                onClick={() => handleNavigate('/login')}
                 className="w-full text-left px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 dark:bg-blue-500 text-white hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
               >
                 Login

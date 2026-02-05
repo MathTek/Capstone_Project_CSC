@@ -80,31 +80,6 @@ export async function registerUser(data: RegisterRequest): Promise<RegisterRespo
   }
 }
 
-export async function calculateScore(token: string, profileData: any): Promise<any> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/calculate_score`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(profileData),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Score calculation failed' }));
-      throw new APIError(response.status, error.detail || 'Score calculation failed');
-    }
-
-    return await response.json();
-  } catch (error) {
-    if (error instanceof APIError) {
-      throw error;
-    }
-    throw new APIError(0, 'Unable to connect to server');
-  }
-}
-
 export async function getScansByUserId(token: string, userId: number): Promise<any> {
   try {
     const response = await fetch(`${API_BASE_URL}/get_scans_by_userid/${userId}`, {
@@ -128,7 +103,30 @@ export async function getScansByUserId(token: string, userId: number): Promise<a
   }
 }
 
-export async function getPIIDetailsByScanId(token: string, scanId: number): Promise<any> {
+export async function deleteScanById(token: string | null, scanId: number): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/delete_scan_by_scanid/${scanId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to delete scan' }));
+      throw new APIError(response.status, error.detail || 'Failed to delete scan');
+    }
+
+    return await response.json();
+  } catch (error) {
+    if (error instanceof APIError) {
+      throw error;
+    }
+    throw new APIError(0, 'Unable to connect to server');
+  }
+}
+
+export async function getPIIDetailsByScanId(token: string | null, scanId: number): Promise<any> {
   try {
     const response = await fetch(`${API_BASE_URL}/get_pii_details_by_scanid/${scanId}`, {
       method: 'GET',
