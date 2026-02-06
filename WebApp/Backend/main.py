@@ -84,3 +84,16 @@ def delete_scan_by_scanid(scan_id: int, db: Session = Depends(get_db)):
 def get_pii_details_by_scanid(scan_id: int, db: Session = Depends(get_db)):
     pii_details = db.query(ScanPiiDetected).filter(ScanPiiDetected.scan_id == scan_id).all()
     return {"pii_details": pii_details}
+
+
+@app.get("/get_feedbacks")
+def get_feedbacks(db: Session = Depends(get_db)):
+    feedback = db.query(PiiFeedbacks).all()
+    return {"feedback": feedback}
+
+@app.get("/get_score_by_scanid/{scan_id}")
+def get_score_by_scanid(scan_id: int, db: Session = Depends(get_db)):
+    score = db.query(UsersScansResults).filter(UsersScansResults.id == scan_id).first()
+    if not score:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    return {"score": score}
