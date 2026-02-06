@@ -40,14 +40,14 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
-        {/* <Route
+        <Route
           path="/risks"
           element={
             <ProtectedRoute>
               <RiskVisualization />
             </ProtectedRoute>
           }
-        /> */}
+        />
         <Route
           path="/scan/:id"
           element={

@@ -148,3 +148,49 @@ export async function getPIIDetailsByScanId(token: string | null, scanId: number
     throw new APIError(0, 'Unable to connect to server');
   }
 }
+
+export async function getScoreByScanId(token: string | null, scanId: number): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/get_score_by_scanid/${scanId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to fetch score' }));
+      throw new APIError(response.status, error.detail || 'Failed to fetch score');
+    }
+
+    return await response.json();
+  } catch (error) {
+    if (error instanceof APIError) {
+      throw error;
+    }
+    throw new APIError(0, 'Unable to connect to server');
+  }
+}
+
+export async function getFeedbacks(token: string | null, scanId: number): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/get_feedbacks`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to fetch feedback' }));
+      throw new APIError(response.status, error.detail || 'Failed to fetch feedback');
+    }
+
+    return await response.json();
+  } catch (error) {
+    if (error instanceof APIError) {
+      throw error;
+    }
+    throw new APIError(0, 'Unable to connect to server');
+  }
+}

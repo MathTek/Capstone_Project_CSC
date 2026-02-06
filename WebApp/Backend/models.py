@@ -46,21 +46,6 @@ class ScanPiiDetected(Base):
         ),
     )
 
-# CREATE TABLE pii_feedbacks (
-#     id SERIAL PRIMARY KEY,
-#     pii_type VARCHAR(50) UNIQUE NOT NULL,
-
-#     severity VARCHAR(20) NOT NULL,
-#     title TEXT NOT NULL,
-#     message TEXT NOT NULL,
-#     advice TEXT NOT NULL,
-
-#     impact INTEGER DEFAULT 0,
-
-#     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-#     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-# );
-
 class PiiFeedbacks(Base):
     __tablename__ = "pii_feedbacks"
 

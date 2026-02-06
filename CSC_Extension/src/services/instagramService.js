@@ -119,7 +119,6 @@ export async function extractProfileData(status, bio, posts, profileInfo, result
       status.set("Automatic profile data extraction...");
       
       const messageTimeout = setTimeout(() => {
-        status.set("Timeout: Content script not responding. Reload the page.");
         loading.set(false);
       }, 10000); 
       
