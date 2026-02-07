@@ -2,7 +2,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from db import SessionLocal, engine, Base
-from models import User, ScanPiiDetected, UsersScansResults, PiiFeedbacks
+from models import User, ScanPiiDetected, UsersScansResults, PiiFeedbacks, FamilyPool
 from utils import hash_password, verify_password
 from auth import create_access_token
 from pydantic import BaseModel
@@ -40,6 +40,11 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     username: str
     password: str
+
+class FamilyPoolCreate(BaseModel):
+    chief_id: int
+    member_username: str
+    family_name: str
 
 @app.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
@@ -97,3 +102,43 @@ def get_score_by_scanid(scan_id: int, db: Session = Depends(get_db)):
     if not score:
         raise HTTPException(status_code=404, detail="Scan not found")
     return {"score": score}
+
+@app.post("/create_family_member")
+def create_family_member(payload: FamilyPoolCreate, db: Session = Depends(get_db)):
+    member = db.query(User).filter(User.username == payload.member_username).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member user not found")
+    new_entry = FamilyPool(chief_id=payload.chief_id, member_id=member.id, family_name=payload.family_name)
+    db.add(new_entry)
+    db.commit()
+    db.refresh(new_entry)
+    return {"msg": "Family member added successfully", "family_pool_id": new_entry.id}
+
+@app.get("/get_family_pool_by_userid/{user_id}")
+def get_family_pool_by_userid(user_id: int, db: Session = Depends(get_db)):
+    family_pool = db.query(FamilyPool).filter(FamilyPool.chief_id == user_id).all()
+    if not family_pool:
+        family_pool = db.query(FamilyPool).filter(FamilyPool.member_id == user_id).all()
+        chief_id = family_pool[0].chief_id if family_pool else None
+        if chief_id:
+            all_family_pool = db.query(FamilyPool).filter((FamilyPool.chief_id == chief_id) | (FamilyPool.member_id == chief_id)).all()
+            family_pool = all_family_pool
+        if not family_pool:
+            return {"family_pool": []}
+    return {"family_pool": family_pool}
+
+@app.get("/get_user_by_id/{user_id}")
+def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"username": user.username}
+
+
+@app.delete("/remove_family_member/{family_pool_id}")
+def remove_family_member(family_pool_id: int, db: Session = Depends(get_db)):
+    db.query(FamilyPool).filter(FamilyPool.id == family_pool_id).delete()
+    db.commit()
+    return {"msg": "Family member removed successfully"}
+
+    
