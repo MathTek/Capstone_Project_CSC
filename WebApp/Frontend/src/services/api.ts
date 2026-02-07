@@ -194,3 +194,99 @@ export async function getFeedbacks(token: string | null, scanId: number): Promis
     throw new APIError(0, 'Unable to connect to server');
   }
 }
+
+export async function getFamilyPoolByUserId(token: string | null, userId: number): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/get_family_pool_by_userid/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to fetch family pool' }));
+      throw new APIError(response.status, error.detail || 'Failed to fetch family pool');
+    }
+
+    return await response.json();
+  } catch (error) {
+    if (error instanceof APIError) {
+      throw error;
+    }
+    throw new APIError(0, 'Unable to connect to server');
+  }
+}
+
+export async function createFamilyMember(token: string | null, userId: number, familyName: string, member_username: string): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/create_family_member`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ chief_id: userId, family_name: familyName, member_username }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to create family member' }));
+      throw new APIError(response.status, error.detail || 'Failed to create family member');
+    } else {
+      console.log("Family member created successfully");
+    }
+
+    return await response.json();
+  } catch (error) {
+    if (error instanceof APIError) {
+      throw error;
+    }
+    throw new APIError(0, 'Unable to connect to server');
+  }
+}
+
+export async function getUserById(token: string | null, userId: number): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/get_user_by_id/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to fetch user' }));
+      throw new APIError(response.status, error.detail || 'Failed to fetch user');
+    }
+
+    return await response.json();
+  } catch (error) {
+    if (error instanceof APIError) {
+      throw error;
+    }
+    throw new APIError(0, 'Unable to connect to server');
+  }
+}
+
+export async function removeFamilyMember(token: string | null, familyPoolId: number): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/remove_family_member/${familyPoolId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to remove family member' }));
+      throw new APIError(response.status, error.detail || 'Failed to remove family member');
+    }
+
+    return await response.json();
+  } catch (error) {
+    if (error instanceof APIError) {
+      throw error;
+    }
+    throw new APIError(0, 'Unable to connect to server');
+  }
+}

@@ -16,6 +16,7 @@ export default function Navigation() {
     { id: '/dashboard', label: 'Dashboard' },
     { id: '/risks', label: 'Risk Analysis' },
     { id: '/scan-history', label: 'Scan History' },
+    { id: '/family-pool', label: 'Family Pool' },
     { id: '/education', label: 'Learn More' },
   ];
 

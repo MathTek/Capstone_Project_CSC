@@ -12,6 +12,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ScanHistory from './pages/ScanHistory';
 import ScanDetails from './pages/ScanDetails';
+import FamilyPool from './pages/FamilyPool';
+import FamilyScanHistory from './pages/FamilyScanHistory';
 
 function AppContent() {
   const location = useLocation();
@@ -45,6 +47,22 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <RiskVisualization />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/family-pool"
+          element={
+            <ProtectedRoute>
+              <FamilyPool />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/family-scan-history/:id"
+          element={
+            <ProtectedRoute>
+              <FamilyScanHistory />
             </ProtectedRoute>
           }
         />

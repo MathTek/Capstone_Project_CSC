@@ -59,3 +59,12 @@ class PiiFeedbacks(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+class FamilyPool(Base):
+    __tablename__ = "family_pool"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chief_id = Column(Integer, nullable=False)
+    member_id = Column(Integer, nullable=False)
+    family_name = Column(String(100), nullable=False)
+    added_at = Column(DateTime(timezone=True), server_default=func.now())
+
