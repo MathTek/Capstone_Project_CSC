@@ -208,7 +208,8 @@
               class="h-4 w-4 text-emerald-400 border-slate-600 bg-slate-900 focus:ring-emerald-400"
             />
             <label for="cgu" class="ml-2 block text-sm text-slate-300">
-              I agree to the Terms and Conditions*.
+              I agree to {''}
+              <a href="{import.meta.env.VITE_FRONTEND_URL}/terms" class="text-emerald-400 hover:underline">the Terms and Conditions</a>*.
             </label>
           </div>
           <button 
