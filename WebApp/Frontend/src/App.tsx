@@ -14,6 +14,7 @@ import ScanHistory from './pages/ScanHistory';
 import ScanDetails from './pages/ScanDetails';
 import FamilyPool from './pages/FamilyPool';
 import FamilyScanHistory from './pages/FamilyScanHistory';
+import TermsCondition from './pages/TermsConditon';
 
 function AppContent() {
   const location = useLocation();
@@ -75,6 +76,7 @@ function AppContent() {
           }
         />
         <Route path="/education" element={<Education />} />
+        <Route path="/terms" element={<TermsCondition />} />
       </Routes>
     </div>
   );

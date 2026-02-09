@@ -154,7 +154,7 @@ export default function Register() {
                   I agree to the{' '}
                   <button
                     type="button"
-                    onClick={() => navigate('/education')}
+                    onClick={() => navigate('/terms')}
                     className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
                     disabled={loading || success}
                   >
@@ -164,18 +164,6 @@ export default function Register() {
                 </span>
               </label>
 
-              <label className="flex items-start space-x-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={placeholderChecked}
-                  onChange={(e) => setPlaceholderChecked(e.target.checked)}
-                  disabled={loading || success}
-                  className="w-5 h-5 text-blue-600 dark:text-blue-400 rounded border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 mt-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">
-                  TITLE
-                </span>
-              </label>
 
               <label className="flex items-start space-x-3 cursor-pointer">
                 <input
