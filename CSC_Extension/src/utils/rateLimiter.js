@@ -1,5 +1,5 @@
 const RATE_LIMIT_KEY = 'csc_scan_rate_limit';
-const MAX_SCANS_PER_PROFILE_PER_HOUR = 1;
+const MAX_SCANS_PER_PROFILE_PER_HOUR = 400;
 const COOLDOWN_MINUTES = 60;
 
 export const RateLimiter = {
