@@ -23,12 +23,12 @@ export interface DetectedData {
 }
 
 export const mockProfile: ProfileData = {
-  username: '@demo_account',
-  bio: 'Family of 4 | Living in Ixelles, BX | Dad to Emma & Jake | Contact: demo.account@gmail.com | 📱 +33 7 82 17 93 92',
+  username: '@demo_insta',
+  bio: 'Family of 4 | Living in Austin, TX | Mom to Emma & Jake | Contact: demo.family@email.com | 📱 555-0123',
   posts: 342,
   followers: 856,
   following: 432,
-  profileImage: 'https://i0.wp.com/www.frenchweb.fr/wp-content/uploads/2019/10/Gotaga.jpg?fit=650%2C405&ssl=1',
+  profileImage: 'https://cdn.pixabay.com/photo/2023/02/18/11/00/icon-7797704_640.png',
 };
 
 export const mockRiskScore: RiskScore = {
@@ -40,10 +40,10 @@ export const mockRiskScore: RiskScore = {
 };
 
 export const mockDetectedData: DetectedData = {
-  emails: ['demo.account@gmail.com'],
-  phones: ['+33 7 82 17 93 92'],
-  locations: ['Ixelles, BX'],
-  keywords: ['Emma', 'Jake', 'epitech', 'basic fit ixelles', 'home'],
+  emails: ['demo.family@email.com'],
+  phones: ['555-0123'],
+  locations: ['Austin, TX'],
+  keywords: ['Emma', 'Jake', 'school', 'soccer practice', 'home'],
 };
 
 export const riskExplanations = {
@@ -101,3 +101,9 @@ export const privacyTips = [
     icon: 'lock',
   },
 ];
+
+export const getRiskLevel = (score: number): 'low' | 'medium' | 'high' => {
+  if (score >= 70) return 'high';
+  if (score >= 40) return 'medium';
+  return 'low';
+};

@@ -1,25 +1,33 @@
-import { Menu, X, Sun, Moon, Shield } from 'lucide-react';
+import { Menu, X, Sun, Moon, Shield, LogOut } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 
-interface NavigationProps {
-  currentPage: string;
-  onNavigate: (page: string) => void;
-}
-
-export default function Navigation({ currentPage, onNavigate }: NavigationProps) {
+export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
+  const { isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const navItems = [
-    { id: 'home', label: 'Home' },
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'risks', label: 'Risk Analysis' },
-    { id: 'education', label: 'Learn More' },
+    { id: '/', label: 'Home' },
+    { id: '/dashboard', label: 'Dashboard' },
+    { id: '/risks', label: 'Risk Analysis' },
+    { id: '/scan-history', label: 'Scan History' },
+    { id: '/family-pool', label: 'Family Pool' },
+    { id: '/education', label: 'Learn More' },
   ];
 
   const handleNavigate = (page: string) => {
-    onNavigate(page);
+    navigate(page);
+    setIsMenuOpen(false);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
     setIsMenuOpen(false);
   };
 
@@ -29,7 +37,7 @@ export default function Navigation({ currentPage, onNavigate }: NavigationProps)
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-3 cursor-pointer" onClick={() => handleNavigate('home')}>
             <Shield className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-            <span className="text-xl font-bold text-gray-900 dark:text-white">C.S.C</span>
+            <span className="text-xl font-bold text-gray-900 dark:text-white">CyberSafeCheck</span>
           </div>
 
           <div className="hidden md:flex items-center space-x-1">
@@ -38,7 +46,7 @@ export default function Navigation({ currentPage, onNavigate }: NavigationProps)
                 key={item.id}
                 onClick={() => handleNavigate(item.id)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  currentPage === item.id
+                  location.pathname === item.id
                     ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
@@ -53,6 +61,23 @@ export default function Navigation({ currentPage, onNavigate }: NavigationProps)
             >
               {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
             </button>
+            {isAuthenticated ? (
+              <button
+                onClick={handleLogout}
+                className="ml-2 p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-red-100 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                aria-label="Logout"
+                title="Logout"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            ) : (
+              <button
+                onClick={() => handleNavigate('/login')}
+                className="ml-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded-lg font-medium text-sm transition-colors"
+              >
+                Login
+              </button>
+            )}
           </div>
 
           <div className="md:hidden flex items-center space-x-2">
@@ -82,7 +107,7 @@ export default function Navigation({ currentPage, onNavigate }: NavigationProps)
                 key={item.id}
                 onClick={() => handleNavigate(item.id)}
                 className={`w-full text-left px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  currentPage === item.id
+                  location.pathname === item.id
                     ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
@@ -90,6 +115,23 @@ export default function Navigation({ currentPage, onNavigate }: NavigationProps)
                 {item.label}
               </button>
             ))}
+            <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+            {isAuthenticated ? (
+              <button
+                onClick={handleLogout}
+                className="w-full text-left px-4 py-2 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center space-x-2"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => handleNavigate('/login')}
+                className="w-full text-left px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 dark:bg-blue-500 text-white hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
+              >
+                Login
+              </button>
+            )}
           </div>
         </div>
       )}

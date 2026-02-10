@@ -1,4 +1,3 @@
-import { each } from "chart.js/helpers";
 
 function getInstagramBio() {
   const allElements = [...document.querySelectorAll('header *')];
@@ -144,10 +143,12 @@ async function getFullProfileData() {
   const profileData = {
   bio: getInstagramBio(),
   posts: await fetchFullPostsDetails(await getAllProfilePosts()),
+  stories: await getAllProfileStories(),
   username: null,
   followers: null,
   following: null,
   postsCount: null,
+  storiesCount: null,
   url: window.location.href,
   timestamp: new Date().toISOString()
   };
@@ -155,6 +156,11 @@ async function getFullProfileData() {
   const usernameEl = document.querySelector('header h2, header h1, h1');
   if (usernameEl) {
   profileData.username = usernameEl.innerText?.trim();
+  }
+
+
+  if (profileData.stories && profileData.stories.length > 0) {
+    profileData.storiesCount = profileData.stories.length;
   }
 
   const statsElements = [...document.querySelectorAll('header section ul li, header section > div a')];
@@ -172,7 +178,7 @@ async function getFullProfileData() {
   }
   });
 
-  console.log("🔍 Extracted profile data:", profileData);
+  console.log(" Extracted profile data:", profileData);
 
   return profileData;
 }
@@ -201,17 +207,106 @@ function waitForProfileData(maxMs = 5000) {
   });
 }
 
-if (typeof chrome !== "undefined" && chrome.runtime) {
-  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.action === "getBio") {
-    try {
-    const bio = getInstagramBio();
-    sendResponse({ bio });
-    } catch (error) {
-    sendResponse({ bio: null, error: error.message });
+async function getAllProfileStories() {
+  const stories = [];
+  
+  const storySelectors = [
+    'a[href*="/stories/highlights/"]'
+  ];
+
+  let storyElements = [];
+  
+  for (const selector of storySelectors) {
+    storyElements = [...document.querySelectorAll(selector)];
+    if (storyElements.length > 0) {
+      break;
     }
-    return false; 
   }
+
+  let index = 1;
+
+  for (const storyElement of storyElements) {
+    const storyTitle = extractStoryTitle(storyElement);
+    
+    if (storyTitle) {
+      stories.push({
+        title: storyTitle,
+        index: index++,
+        type: "story",
+        url: storyElement.href
+      });
+    }
+  }
+
+ 
+  return stories;
+}
+
+function extractStoryTitle(storyElement) {
+  const ariaLabel = storyElement.getAttribute('aria-label');
+  if (ariaLabel && isValidStoryTitle(ariaLabel)) {
+    return cleanStoryTitle(ariaLabel);
+  }
+
+  const titleElements = storyElement.querySelectorAll('span, div');
+  for (const titleEl of titleElements) {
+    const text = titleEl.textContent?.trim();
+    if (text && isValidStoryTitle(text)) {
+      return cleanStoryTitle(text);
+    }
+  }
+
+  return null;
+}
+
+function isValidStoryTitle(text) {
+  if (!text || text.length === 0) return false;
+  
+  const invalidPatterns = [
+    /^@[\w\.]+$/i,
+    /^\d+$/,
+    /^(voir|see|afficher|show|plus|more)$/i,
+    /profile picture/i,
+    /loading/i,
+    /^\.{3,}$/,
+    /^[•▪→\-_]+$/
+  ];
+
+  for (const pattern of invalidPatterns) {
+    if (pattern.test(text)) {
+      return false;
+    }
+  }
+
+  return text.length >= 1 && text.length <= 100;
+}
+
+function cleanStoryTitle(title) {
+  return title
+    .replace(/^(view|voir)\s+/i, '')
+    .replace(/\s+(highlight|story)$/i, '')
+    .replace(/^(story de|story by|histoire de|histoire by)\s*/i, '')
+    .replace(/@[\w\.]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+async function getFullProfileDataWithStories() {
+  const profileData = await getFullProfileData();
+
+
+  profileData.stories = await getAllProfileStories();
+
+  return profileData;
+}
+
+// Cross-browser compatibility: use browser API (Firefox) or chrome API (Chrome)
+const browserAPI = (typeof browser !== "undefined" && browser.runtime) ? browser : chrome;
+
+if (browserAPI && browserAPI.runtime) {
+  browserAPI.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+
+  
   
   if (msg.action === "getFullProfile") {
     waitForProfileData()
@@ -228,32 +323,7 @@ if (typeof chrome !== "undefined" && chrome.runtime) {
     });
     return true; 
   }
-  
-  if (msg.action === "getPost") {
-    waitForProfileData()
-    .then(profileData => {
-      const response = {
-      content: profileData.bio,
-      posts: profileData.posts,
-      metadata: {
-        username: profileData.username,
-        followers: profileData.followers,
-        following: profileData.following,
-        postsCount: profileData.postsCount
-      }
-      };
-      sendResponse(response);
-    })
-    .catch(error => {
-      sendResponse({
-      content: null,
-      posts: [],
-      metadata: {},
-      error: error.message
-      });
-    });
-    return true; 
-  }
+
 
   sendResponse({ error: "Unknown action: " + msg.action });
   return false;
