@@ -90,6 +90,9 @@ export async function signup(username, email, password, display_consent, cgu) {
 }
 
 export async function logout() {
+  console.log("User logged out before", await AuthStorageService.getAuthState());
+
   await AuthStorageService.clearAuthState();
+  console.log("User logged out after", await AuthStorageService.getAuthState());
   return true;
 }

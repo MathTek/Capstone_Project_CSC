@@ -41,6 +41,8 @@
     try {
       const success = await login(username, password);
       if (success) {
+        const authState = await AuthStorageService.getAuthState();
+        userInfo.set(authState.userInfo);
         isAuthenticated.set(true);
       
         setTimeout(async () => {
@@ -60,6 +62,8 @@
       const success = await signup(username, email, password, display_consent, cgu);
 
       if (success) {
+        const authState = await AuthStorageService.getAuthState();
+        userInfo.set(authState.userInfo);
         isAuthenticated.set(true);
         setTimeout(async () => {
           const onInstagram = await checkInstagramPage(status);
@@ -85,18 +89,25 @@
   async function handleLogout() {
     await logout();
     isAuthenticated.set(false);
+    userInfo.set(null);
     hasScanned.set(false);
     results.set([]);
     bio.set("No bio scanned yet");
     posts.set([]);
     profileInfo.set({});
+    highlights.set([]);
+    numberOfPII.set(0);
+    numberOfCreditCards.set(0);
+    pii_types_number.set({});
     status.set("Please authenticate to continue");
+    
   }
 
   onMount(async () => {
   
     try {
       const authState = await AuthStorageService.getAuthState();
+      console.log("Auth state on mount:", authState);
       if (authState.isAuthenticated) {
         isAuthenticated.set(true);
         userInfo.set(authState.userInfo);
