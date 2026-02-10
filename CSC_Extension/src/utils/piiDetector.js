@@ -154,7 +154,7 @@ export function detectPII(text, source) {
             isValid = isValidIBAN(cleanValue);
             break;
           case 'full_name':
-            isValid = !/\b(?:the|and|for|are|but|not|you|all|can|her|was|one|our|out|day|get|has|him|how|man|new|now|old|see|two|way|who|boy|did|its|let|put|say|she|too|use|le|la|les|de|du|des|un|une|et|ou|dans|sur|pour|par|avec|sans|chez|ce|cet|cette|ses|son|sa|mon|ma|mes|notre|votre|leur|ils|elles|est|sont|qui|que|quoi|où|dont|quand|visa|mastercard)\b/i.test(cleanValue);
+            isValid = !/\b(?:the|and|for|are|but|not|you|all|can|her|was|one|our|out|day|get|has|him|how|man|new|now|old|see|two|way|who|boy|did|its|let|put|say|she|too|use|le|la|les|de|du|des|un|une|et|ou|dans|sur|pour|par|avec|sans|chez|ce|cet|cette|ses|son|sa|mon|ma|mes|notre|votre|leur|ils|elles|est|sont|qui|que|quoi|où|dont|quand|visa|mastercard|conformité|simplifier|rgpd)\b/i.test(cleanValue);
             break;
           default:
             isValid = true;

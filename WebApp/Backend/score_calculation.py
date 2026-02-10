@@ -21,11 +21,11 @@ PII_WEIGHTS_BY_TYPE = {
 
   "email": 15,
 
-  "birth_date": 10,
-  "personal_info": 10,
+  "birth_date": 5,
+  "personal_info": 5,
 
-  "full_name": 8,
-  "sensitive_keyword": 6,
+  "full_name": 2,
+  "sensitive_keyword": 2,
 
   "ip_address": 5,
   "mac_address": 5
