@@ -26,8 +26,6 @@ export default function ScanHistory() {
             try {
                 setLoading(true);
                 const data = await getScansByUserId(localStorage.getItem('csc_token') || '', Number(localStorage.getItem('csc_user_id')));
-
-                console.log('Données reçues:', data.scans);
                 setScanHistory(data.scans);
             } catch (err) {
                 console.error('Erreur lors du fetch:', err);
@@ -71,9 +69,8 @@ export default function ScanHistory() {
         avgScore: scanHistory.length > 0 
             ? Math.round(scanHistory.reduce((acc, scan) => acc + (scan.score || 0), 0) / scanHistory.length) 
             : 0,
-        lastScan: scanHistory.length > 0 ? scanHistory[0] : null,
+        lastScan: scanHistory.length > 0 ? scanHistory[scanHistory.length - 1].created_at : null,
     };
-
 
     const openDeleteModal = (scanId: number) => {
         setDeleteModal({ isOpen: true, scanId, isDeleting: false });
@@ -147,7 +144,7 @@ export default function ScanHistory() {
                                 <div>
                                     <p className="text-sm text-gray-500 dark:text-gray-400">Last Scan</p>
                                     <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                                        {stats.lastScan ? formatDate(stats.lastScan.date).split(',')[0] : 'N/A'}
+                                        {stats.lastScan ? formatDate(stats.lastScan).split(',')[0] : 'N/A'}
                                     </p>
                                 </div>
                                 <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl">

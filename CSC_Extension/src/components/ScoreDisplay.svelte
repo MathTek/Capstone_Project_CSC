@@ -18,5 +18,6 @@
         <div class="text-5xl font-bold text-emerald-400 mb-4">{score.last_score} %</div>
         <p class="text-xs text-slate-500">(0 = High Risk, 100 = Low Risk)</p>
       </div>
+      <a href="{import.meta.env.VITE_FRONTEND_URL}/scan-history/" class="absolute bottom-4 right-4 text-sm text-emerald-300 hover:underline">See my history</a>
     </div>
   </div>
