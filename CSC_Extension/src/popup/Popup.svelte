@@ -11,30 +11,35 @@
   import ScanButton from "../components/ScanButton.svelte";
   import NavigatePrompt from "../components/NavigatePrompt.svelte";
   import { extractProfileData, reloadInstagramPage, checkInstagramPage } from "../services/instagramService.js";
-  import { login, signup, logout } from "../utils/login.js";  
+  import { login, signup, logout } from "../utils/login.js";
   import { AuthStorageService } from "../services/authStorage.js";
   import Auth from "../components/Auth.svelte";
   import ScoreDisplay from "../components/ScoreDisplay.svelte";
+  import { scanStores, resetScanStores } from "../services/scanStores.js";
 
-  const bio = writable("No bio scanned yet");
-  const posts = writable([]);
-  const loading = writable(false);
-  const profileInfo = writable({});
-  const status = writable("Checking Instagram page...");
-  let results = writable([]);
-  const numberOfPII = writable(0);
-  const numberOfCreditCards = writable(0);
-  const hasScanned = writable(false);
-  const isOnInstagram = writable(false);
+  // ── Scan stores (grouped) ──────────────────────────────────────────────────
+  const { status, loading, bio, posts, highlights, profileInfo, results, numberOfPII, pii_types_number } = scanStores;
+
+  // ── UI-only stores ─────────────────────────────────────────────────────────
+  const hasScanned      = writable(false);
+  const isOnInstagram   = writable(false);
   const isAuthenticated = writable(false);
-  const userInfo = writable(null);
-  const highlights = writable([]);
-  const pii_types_number = writable({});
+  const userInfo        = writable(null);
 
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  async function checkAndSetInstagramPage() {
+    setTimeout(async () => {
+      const onInstagram = await checkInstagramPage(status);
+      isOnInstagram.set(onInstagram);
+    }, 100);
+  }
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
 
   function handleStartScan() {
     hasScanned.set(true);
-    extractProfileData(status, bio, posts, profileInfo, results, numberOfPII, loading, highlights, pii_types_number);
+    extractProfileData(scanStores);
   }
 
   async function handleLogin(username, password) {
@@ -44,15 +49,11 @@
         const authState = await AuthStorageService.getAuthState();
         userInfo.set(authState.userInfo);
         isAuthenticated.set(true);
-      
-        setTimeout(async () => {
-          const onInstagram = await checkInstagramPage(status);
-          isOnInstagram.set(onInstagram);
-        }, 100);
+        checkAndSetInstagramPage();
       }
       return success;
     } catch (error) {
-      console.error("Login error:", error);
+      console.error('[Popup] Login error:', error);
       return false;
     }
   }
@@ -60,20 +61,15 @@
   async function handleSignup(username, email, password, display_consent, cgu) {
     try {
       const success = await signup(username, email, password, display_consent, cgu);
-
       if (success) {
         const authState = await AuthStorageService.getAuthState();
         userInfo.set(authState.userInfo);
         isAuthenticated.set(true);
-        setTimeout(async () => {
-          const onInstagram = await checkInstagramPage(status);
-          isOnInstagram.set(onInstagram);
-        }, 100);
+        checkAndSetInstagramPage();
       }
-
       return success;
     } catch (error) {
-      console.error("Signup error:", error);
+      console.error('[Popup] Signup error:', error);
       return false;
     }
   }
@@ -91,37 +87,24 @@
     isAuthenticated.set(false);
     userInfo.set(null);
     hasScanned.set(false);
-    results.set([]);
-    bio.set("No bio scanned yet");
-    posts.set([]);
-    profileInfo.set({});
-    highlights.set([]);
-    numberOfPII.set(0);
-    numberOfCreditCards.set(0);
-    pii_types_number.set({});
-    status.set("Please authenticate to continue");
-    
+    resetScanStores();
   }
 
+  // ── Lifecycle ──────────────────────────────────────────────────────────────
+
   onMount(async () => {
-  
     try {
       const authState = await AuthStorageService.getAuthState();
-      console.log("Auth state on mount:", authState);
       if (authState.isAuthenticated) {
         isAuthenticated.set(true);
         userInfo.set(authState.userInfo);
-        
-        setTimeout(async () => {
-          const onInstagram = await checkInstagramPage(status);
-          isOnInstagram.set(onInstagram);
-        }, 100);
+        checkAndSetInstagramPage();
       } else {
         isAuthenticated.set(false);
-        status.set("Please authenticate to continue");
+        status.set('Please authenticate to continue');
       }
     } catch (error) {
-      console.error("Auth check error:", error);
+      console.error('[Popup] Auth check error:', error);
       isAuthenticated.set(false);
     }
   });
