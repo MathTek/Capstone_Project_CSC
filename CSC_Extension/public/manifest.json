@@ -14,12 +14,23 @@
   
   "content_scripts": [
     {
-      "matches": ["https://www.instagram.com/*"],
+      "matches": [
+        "https://www.instagram.com/*",
+        "https://www.facebook.com/*",
+        "https://x.com/*",
+        "https://twitter.com/*"
+      ],
       "js": ["content.js"],
       "run_at": "document_idle"
     }
   ],
   "permissions": ["storage", "tabs", "scripting"],
-  "host_permissions": ["http://localhost:8000/*", "https://www.instagram.com/*"]
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "https://www.instagram.com/*",
+    "https://www.facebook.com/*",
+    "https://x.com/*",
+    "https://twitter.com/*"
+  ]
 
 }

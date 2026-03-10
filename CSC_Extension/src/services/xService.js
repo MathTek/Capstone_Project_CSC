@@ -42,7 +42,7 @@ async function sendPIIList(piiList) {
     const userId    = authState?.userInfo?.id;
 
     if (!userId) {
-      console.error('[instagramService] User ID not found in auth state.');
+      console.error('[xService] User ID not found in auth state.');
       return null;
     }
 
@@ -54,14 +54,14 @@ async function sendPIIList(piiList) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error('[instagramService] Score calculation failed:', errorData);
+      console.error('[xService] Score calculation failed:', errorData);
       return null;
     }
 
     const data = await response.json();
     return data.score;
   } catch (err) {
-    console.error('[instagramService] Network or server error:', err);
+    console.error('[xService] Network or server error:', err);
     return null;
   }
 }
@@ -85,23 +85,21 @@ function uniquePIITypes(piiResults) {
   return [...new Set(piiResults.map(e => e.type))];
 }
 
-async function processProfileResponse(response, stores) {
+async function processXProfileResponse(response, stores) {
   const { bio, posts, profileInfo, results, numberOfPII, highlights, pii_types_number } = stores;
 
   const bioText = response.bio || 'No bio found';
   bio.set(bioText);
   results.set(detectPII(bioText, 'bio'));
 
-  const highlightsData = response.stories ?? [];
-  highlights.set(highlightsData);
-  highlightsData.forEach(({ title, index }) => {
-    results.update(n => [...n, ...detectPII(title, `highlight ${index}`)]);
-  });
+  highlights.set([]);
 
   const postsData = response.posts ?? [];
   posts.set(postsData);
   postsData.forEach(({ content, index }) => {
-    results.update(n => [...n, ...detectPII(content, `post ${index}`)]);
+    if (content) {
+      results.update(n => [...n, ...detectPII(content, `tweet ${index}`)]);
+    }
   });
 
   const currentResults = get(results);
@@ -114,7 +112,7 @@ async function processProfileResponse(response, stores) {
   if (score !== null) {
     profileInfo.update(info => ({ ...info, last_score: score }));
   } else {
-    console.error('[instagramService] Failed to receive score from server.');
+    console.error('[xService] Failed to receive score from server.');
   }
 
   profileInfo.set({
@@ -126,37 +124,45 @@ async function processProfileResponse(response, stores) {
   });
 
   const bioLabel = response.bio ? 'Bio' : 'No Bio';
-  return `Extraction completed: ${bioLabel}, ${postsData.length} posts and ${highlightsData.length} highlights found`;
+  return `Extraction completed: ${bioLabel}, ${postsData.length} tweets found`;
 }
 
-export async function checkInstagramPage(status) {
+export async function checkXPage(status) {
   return new Promise(resolve => {
     browserAPI.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-      if (!tab.url.includes('instagram.com')) {
-        status.set('Please navigate to an Instagram profile');
+      const url = tab.url ?? '';
+
+      const isX = url.includes('x.com') || url.includes('twitter.com');
+      if (!isX) {
+        status.set('Please navigate to an X profile');
         return resolve(false);
       }
 
-      const isRootPage =
-        tab.url.endsWith('instagram.com/') || tab.url.endsWith('instagram.com');
-
-      if (isRootPage) {
-        status.set('Please navigate to a specific Instagram profile');
+      const nonProfilePaths = /\/(home|explore|notifications?|messages?|settings?|search|i\/|compose\/|login|signup)/i;
+      if (nonProfilePaths.test(url)) {
+        status.set('Please navigate to a specific X profile page');
         return resolve(false);
       }
 
-      status.set('Instagram profile detected – Ready to scan');
+      const pathMatch = url.match(/(?:x|twitter)\.com\/([^/?#]+)/);
+      if (!pathMatch) {
+        status.set('Please navigate to a specific X profile page');
+        return resolve(false);
+      }
+
+      status.set('X profile detected – Ready to scan');
       resolve(true);
     });
   });
 }
 
-export async function extractProfileData(stores) {
+export async function extractXProfileData(stores) {
   const { status, bio, loading } = stores;
 
   browserAPI.tabs.query({ active: true, currentWindow: true }, async ([tab]) => {
-    if (!tab.url.includes('instagram.com')) {
-      status.set('Please navigate to an Instagram profile');
+    const url = tab.url ?? '';
+    if (!url.includes('x.com') && !url.includes('twitter.com')) {
+      status.set('Please navigate to an X profile');
       loading.set(false);
       return;
     }
@@ -172,11 +178,11 @@ export async function extractProfileData(stores) {
     }
 
     setTimeout(() => {
-      status.set('Extracting profile data…');
+      status.set('Extracting X profile data…');
 
       const fallbackTimeout = setTimeout(() => loading.set(false), REQUEST_TIMEOUT);
 
-      browserAPI.tabs.sendMessage(tab.id, { action: 'getFullProfile' }, async response => {
+      browserAPI.tabs.sendMessage(tab.id, { action: 'getXProfile' }, async response => {
         clearTimeout(fallbackTimeout);
 
         if (browserAPI.runtime.lastError) {
@@ -198,7 +204,7 @@ export async function extractProfileData(stores) {
           return;
         }
 
-        const statusMessage = await processProfileResponse(response, stores);
+        const statusMessage = await processXProfileResponse(response, stores);
         status.set(statusMessage);
         loading.set(false);
       });
@@ -206,7 +212,7 @@ export async function extractProfileData(stores) {
   });
 }
 
-export function reloadInstagramPage(status, loading) {
+export function reloadXPage(status, loading) {
   browserAPI.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
     browserAPI.tabs.reload(tab.id, () => {
       status.set('Page reloaded. Wait for reload then click Refresh.');
