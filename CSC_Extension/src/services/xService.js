@@ -98,7 +98,7 @@ async function processXProfileResponse(response, stores) {
   posts.set(postsData);
   postsData.forEach(({ content, index }) => {
     if (content) {
-      results.update(n => [...n, ...detectPII(content, `tweet ${index}`)]);
+      results.update(n => [...n, ...detectPII(content, `post ${index}`)]);
     }
   });
 
@@ -106,25 +106,33 @@ async function processXProfileResponse(response, stores) {
   numberOfPII.set(currentResults.length);
   pii_types_number.set(uniquePIITypes(currentResults));
 
+
   const piiList = aggregatePII(currentResults);
   const score   = await sendPIIList(piiList);
 
   if (score !== null) {
-    profileInfo.update(info => ({ ...info, last_score: score }));
+    profileInfo.set({
+      username:   response.username,
+      followers:  response.followers,
+      following:  response.following,
+      postsCount: response.postsCount ?? postsData.length,
+      url:        response.url,
+      last_score: score,
+    });
   } else {
     console.error('[xService] Failed to receive score from server.');
+    profileInfo.set({
+      username:   response.username,
+      followers:  response.followers,
+      following:  response.following,
+      postsCount: response.postsCount ?? postsData.length,
+      url:        response.url,
+    });
   }
 
-  profileInfo.set({
-    username:   response.username,
-    followers:  response.followers,
-    following:  response.following,
-    postsCount: response.postsCount ?? postsData.length,
-    url:        response.url,
-  });
 
   const bioLabel = response.bio ? 'Bio' : 'No Bio';
-  return `Extraction completed: ${bioLabel}, ${postsData.length} tweets found`;
+  return `Extraction completed: ${bioLabel}, ${postsData.length} posts found`;
 }
 
 export async function checkXPage(status) {

@@ -112,18 +112,25 @@ async function processProfileResponse(response, stores) {
   const score   = await sendPIIList(piiList);
 
   if (score !== null) {
-    profileInfo.update(info => ({ ...info, last_score: score }));
+    profileInfo.set({
+      username:   response.username,
+      followers:  response.followers,
+      following:  response.following,
+      postsCount: response.postsCount ?? postsData.length,
+      url:        response.url,
+      last_score: score,
+    });
   } else {
-    console.error('[instagramService] Failed to receive score from server.');
+    console.error('[xService] Failed to receive score from server.');
+    profileInfo.set({
+      username:   response.username,
+      followers:  response.followers,
+      following:  response.following,
+      postsCount: response.postsCount ?? postsData.length,
+      url:        response.url,
+    });
   }
 
-  profileInfo.set({
-    username:   response.username,
-    followers:  response.followers,
-    following:  response.following,
-    postsCount: response.postsCount ?? postsData.length,
-    url:        response.url,
-  });
 
   const bioLabel = response.bio ? 'Bio' : 'No Bio';
   return `Extraction completed: ${bioLabel}, ${postsData.length} posts and ${highlightsData.length} highlights found`;

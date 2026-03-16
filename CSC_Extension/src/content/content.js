@@ -168,7 +168,6 @@ async function getFullProfileData() {
     }
   });
 
-  console.log(" Extracted profile data:", profileData);
 
   return profileData;
 }

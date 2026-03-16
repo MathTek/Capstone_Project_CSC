@@ -91,15 +91,6 @@
     }
   }
 
-  function handleReloadInstagramPage() {
-    if ($isOnFacebook) {
-      reloadFacebookPage(status, loading);
-    } else if ($isOnX) {
-      reloadXPage(status, loading);
-    } else {
-      reloadInstagramPage(status, loading);
-    }
-  }
 
   function handleNavigateToProfile() {
     chrome.tabs.create({ url: 'https://www.instagram.com' });

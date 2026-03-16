@@ -81,7 +81,6 @@ export async function signup(username, email, password, display_consent, cgu) {
       { username, email, id: data.user_id || 1 }
     );
 
-    console.log("Signup successful:", data);
     return true;
   } catch (err) {
     console.error("Error signing up:", err);
@@ -90,9 +89,6 @@ export async function signup(username, email, password, display_consent, cgu) {
 }
 
 export async function logout() {
-  console.log("User logged out before", await AuthStorageService.getAuthState());
-
   await AuthStorageService.clearAuthState();
-  console.log("User logged out after", await AuthStorageService.getAuthState());
   return true;
 }
