@@ -14,7 +14,7 @@
           </div>
         </div>
         <h2 class="text-2xl font-semibold text-emerald-300 mb-2">Privacy Score</h2>
-        <p class="text-sm text-slate-400 mb-6">Your Instagram profile privacy score is:</p>
+        <p class="text-sm text-slate-400 mb-6">Your profile privacy score is:</p>
         <div class="text-5xl font-bold text-emerald-400 mb-4">{score.last_score} %</div>
         <p class="text-xs text-slate-500">(0 = High Risk, 100 = Low Risk)</p>
       </div>

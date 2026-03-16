@@ -1,8 +1,8 @@
 import { AuthStorageService } from '../services/authStorage.js';
 
-const isFirefox = typeof browser !== "undefined" && browser.runtime;
-
 async function browserFetch(url, options) {
+  const isFirefox = !!(typeof globalThis !== 'undefined' && globalThis.browser && globalThis.browser.runtime);
+
   if (isFirefox) {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -31,7 +31,7 @@ async function browserFetch(url, options) {
     });
   }
   
-  return await fetch(url, options);
+  return fetch(url, options);
 }
 
 export async function login(username, password) {
@@ -81,7 +81,6 @@ export async function signup(username, email, password, display_consent, cgu) {
       { username, email, id: data.user_id || 1 }
     );
 
-    console.log("Signup successful:", data);
     return true;
   } catch (err) {
     console.error("Error signing up:", err);
@@ -90,9 +89,6 @@ export async function signup(username, email, password, display_consent, cgu) {
 }
 
 export async function logout() {
-  console.log("User logged out before", await AuthStorageService.getAuthState());
-
   await AuthStorageService.clearAuthState();
-  console.log("User logged out after", await AuthStorageService.getAuthState());
   return true;
 }

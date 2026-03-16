@@ -1,7 +1,7 @@
 <script>
-  export let stories;
+  export let stories = [];
   
-  $: storiesArray = Array.isArray($stories) ? $stories : [];
+  $: storiesArray = Array.isArray(stories) ? stories : [];
   
   function copyStoryTitle(title) {
     navigator.clipboard.writeText(title);

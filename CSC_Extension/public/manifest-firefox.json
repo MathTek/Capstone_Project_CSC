@@ -16,7 +16,7 @@
   
   "content_scripts": [
     {
-      "matches": ["https://www.instagram.com/*"],
+      "matches": ["https://www.instagram.com/*", "https://www.facebook.com/*"],
       "js": ["content.js"],
       "run_at": "document_idle"
     }
@@ -28,7 +28,8 @@
     "webRequest",
     "<all_urls>",
     "http://localhost:8000/*",
-    "https://www.instagram.com/*"
+    "https://www.instagram.com/*",
+    "https://www.facebook.com/*"
   ],
   
   "browser_specific_settings": {
