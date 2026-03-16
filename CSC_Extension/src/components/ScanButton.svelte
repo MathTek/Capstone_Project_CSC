@@ -16,7 +16,6 @@
 
   async function getUserId() {
     const authState = await AuthStorageService.getAuthState();
-    console.log('Retrieved auth state:', authState?.userInfo.id);
     return authState?.userInfo?.id || 'anonymous';
   }
 

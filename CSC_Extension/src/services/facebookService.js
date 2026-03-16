@@ -1,89 +1,18 @@
 import { get } from 'svelte/store';
 import { detectPII } from '../utils/piiDetector.js';
-import { AuthStorageService } from './authStorage.js';
+import { createSocialServiceHelpers } from './socialServiceBase.js';
 
-const browserAPI = (typeof browser !== 'undefined' && browser.runtime) ? browser : chrome;
-const isFirefox  = typeof browser !== 'undefined' && !!browser.runtime;
+const browserAPI = (typeof globalThis !== 'undefined' && (globalThis.browser || globalThis.chrome)) || undefined;
 
 const BACKEND_URL     = import.meta.env.VITE_BACKEND_URL;
 const REQUEST_TIMEOUT = 10_000;
 const SCRIPT_DELAY    = 1_500;
 
-async function browserFetch(url, options = {}) {
-  if (!isFirefox) return fetch(url, options);
-
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open(options.method || 'GET', url);
-    xhr.timeout = REQUEST_TIMEOUT;
-
-    Object.entries(options.headers ?? {}).forEach(([key, value]) => {
-      xhr.setRequestHeader(key, value);
-    });
-
-    xhr.onload = () =>
-      resolve({
-        ok:     xhr.status >= 200 && xhr.status < 300,
-        status: xhr.status,
-        json:   async () => JSON.parse(xhr.responseText),
-        text:   async () => xhr.responseText,
-      });
-
-    xhr.onerror   = () => reject(new Error('Network request failed'));
-    xhr.ontimeout = () => reject(new Error('Request timed out'));
-
-    xhr.send(options.body);
-  });
-}
-
-async function sendPIIList(piiList) {
-  try {
-    const authState = await AuthStorageService.getAuthState();
-    const userId    = authState?.userInfo?.id;
-
-    if (!userId) {
-      console.error('[facebookService] User ID not found in auth state.');
-      return null;
-    }
-
-    const response = await browserFetch(`${BACKEND_URL}/calculate_score`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ pii_list: piiList, user_id: userId }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('[facebookService] Score calculation failed:', errorData);
-      return null;
-    }
-
-    const data = await response.json();
-    return data.score;
-  } catch (err) {
-    console.error('[facebookService] Network or server error:', err);
-    return null;
-  }
-}
-
-function aggregatePII(piiResults) {
-  return piiResults.reduce((acc, element) => {
-    const src      = element.source.split(' ')[0];
-    const existing = acc.find(item => item.type === element.type && item.source === src);
-
-    if (existing) {
-      existing.occurrence += 1;
-    } else {
-      acc.push({ type: element.type, occurrence: 1, source: src });
-    }
-
-    return acc;
-  }, []);
-}
-
-function uniquePIITypes(piiResults) {
-  return [...new Set(piiResults.map(e => e.type))];
-}
+const { sendPIIList, aggregatePII, uniquePIITypes } = createSocialServiceHelpers({
+  backendUrl: BACKEND_URL,
+  requestTimeout: REQUEST_TIMEOUT,
+  sourceLabel: 'facebookService'
+});
 
 async function processFacebookProfileResponse(response, stores) {
   const { bio, posts, profileInfo, results, numberOfPII, highlights, pii_types_number } = stores;
@@ -111,8 +40,6 @@ async function processFacebookProfileResponse(response, stores) {
 
   if (score !== null) {
     profileInfo.update(info => ({ ...info, last_score: score }));
-  } else {
-    console.error('[facebookService] Failed to receive score from server.');
   }
 
   profileInfo.set({

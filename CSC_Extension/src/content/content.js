@@ -267,12 +267,6 @@ function cleanStoryTitle(title) {
     .trim();
 }
 
-async function getFullProfileDataWithStories() {
-  const profileData = await getFullProfileData();
-  profileData.stories = await getAllProfileStories();
-  return profileData;
-}
-
 function getFacebookBio() {
   const introContainer = document.querySelector(
     '[aria-label="Introduction"], [aria-label="Introduction"i]'
@@ -591,11 +585,10 @@ function waitForXData(maxMs = 6000) {
   });
 }
 
-const browserAPI = (typeof browser !== "undefined" && browser.runtime) ? browser : chrome;
+const browserAPI = (typeof globalThis !== 'undefined' && (globalThis.browser || globalThis.chrome)) || undefined;
 
 if (browserAPI && browserAPI.runtime) {
   browserAPI.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-
     if (msg.action === "getFullProfile") {
       waitForProfileData()
         .then(profileData => sendResponse(profileData))
@@ -627,5 +620,3 @@ if (browserAPI && browserAPI.runtime) {
     return false;
   });
 }
-
-export {};

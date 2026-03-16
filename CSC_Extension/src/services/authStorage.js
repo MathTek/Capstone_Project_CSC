@@ -1,4 +1,4 @@
-const browserAPI = (typeof browser !== "undefined" && browser.runtime) ? browser : chrome;
+const browserAPI = (typeof globalThis !== 'undefined' && (globalThis.browser || globalThis.chrome)) || undefined;
 
 export class AuthStorageService {
   

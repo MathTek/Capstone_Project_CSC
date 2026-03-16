@@ -1,8 +1,8 @@
 import { AuthStorageService } from '../services/authStorage.js';
 
-const isFirefox = typeof browser !== "undefined" && browser.runtime;
-
 async function browserFetch(url, options) {
+  const isFirefox = !!(typeof globalThis !== 'undefined' && globalThis.browser && globalThis.browser.runtime);
+
   if (isFirefox) {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -31,7 +31,7 @@ async function browserFetch(url, options) {
     });
   }
   
-  return await fetch(url, options);
+  return fetch(url, options);
 }
 
 export async function login(username, password) {
