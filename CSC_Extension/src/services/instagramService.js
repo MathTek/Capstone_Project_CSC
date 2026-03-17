@@ -38,7 +38,7 @@ async function processProfileResponse(response, stores) {
   pii_types_number.set(uniquePIITypes(currentResults));
 
   const piiList = aggregatePII(currentResults);
-  const score   = await sendPIIList(piiList);
+  const score   = await sendPIIList(piiList, "Instagram");
 
   if (score !== null) {
     profileInfo.set({

@@ -62,10 +62,8 @@ export default function FamilyPool() {
             familyName = familyNameForAdd;
         }
 
-        console.log("Creating family member with:", { userId, familyName, member_username });
         try {
             const response = await createFamilyMember(localStorage.getItem("csc_token"), userId, familyName, member_username);
-            console.log("Family member created successfully:", response);
             showAlert('success', 'Family member added successfully!');
             await fetchFamilyMembers();
         } catch (error) {
@@ -93,7 +91,6 @@ export default function FamilyPool() {
     const fetchFamilyMembers = async () => {
         const response = await getFamilyPoolByUserId(localStorage.getItem("csc_token"), parseInt(localStorage.getItem("csc_user_id") || "0"));
         const members = response.family_pool || [];
-        console.log("API response for family pool:", members);
 
         
         if (members.length > 0) {

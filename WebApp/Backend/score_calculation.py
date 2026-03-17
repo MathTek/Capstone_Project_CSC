@@ -104,7 +104,7 @@ def save_scan_details(scan_id, pii_list):
         send_to_db(scan_id, type, occurrence, source)
     
 
-def save_scan_result(user_id, pii_list, score):
+def save_scan_result(user_id, pii_list, score, media):
 
     db_session = next(get_db())
 
@@ -126,7 +126,8 @@ def save_scan_result(user_id, pii_list, score):
         src_bio_count=src_bio_count,
         src_posts_count=src_posts_count,
         src_highlights_count=src_highlights_count,
-        score=score
+        score=score,
+        media=media
     )
 
     db_session.add(scan_result)

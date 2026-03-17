@@ -66,9 +66,6 @@ export default function ScanDetails() {
                 setFeedback(feedback_data.feedback);
                 setPiiDetails(data.pii_details);
 
-                console.log(piiDetails);
-                console.log(score_data.score.score);
-                console.log(feedback);
             } catch (error) {
                 console.error("Error fetching PII details:", error);
             }

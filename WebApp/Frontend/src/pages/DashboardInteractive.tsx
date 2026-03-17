@@ -274,7 +274,6 @@ export default function DashboardInteractive() {
             lowestScoreMember,
             highestScoreMember
           });
-          console.log('Family stats calculated:', familyStats);
         } else {
           setFamilyStats(null);
         }

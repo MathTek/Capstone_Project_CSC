@@ -28,7 +28,7 @@
   const isAuthenticated = writable(false);
   const userInfo        = writable(null);
 
-  async function checkAndSetInstagramPage() {
+  async function checkPage() {
     setTimeout(async () => {
       const onInstagram = await checkInstagramPage(status);
       isOnInstagram.set(onInstagram);
@@ -66,7 +66,7 @@
         const authState = await AuthStorageService.getAuthState();
         userInfo.set(authState.userInfo);
         isAuthenticated.set(true);
-        checkAndSetInstagramPage();
+        checkPage();
       }
       return success;
     } catch (error) {
@@ -81,8 +81,9 @@
       if (success) {
         const authState = await AuthStorageService.getAuthState();
         userInfo.set(authState.userInfo);
+        console.log('Signup success:', userInfo);
         isAuthenticated.set(true);
-        checkAndSetInstagramPage();
+        checkPage();
       }
       return success;
     } catch (error) {
@@ -110,7 +111,7 @@
       if (authState.isAuthenticated) {
         isAuthenticated.set(true);
         userInfo.set(authState.userInfo);
-        checkAndSetInstagramPage();
+        checkPage();
       } else {
         isAuthenticated.set(false);
         status.set('Please authenticate to continue');
