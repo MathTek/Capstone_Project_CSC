@@ -9,10 +9,16 @@ from models import User, FamilyPool
 router = APIRouter(tags=["family"])
 
 
+
 class FamilyPoolCreate(BaseModel):
     chief_id: int
     member_username: str
     family_name: str
+    is_accepted: bool = False
+
+class AcceptFamilyMemberRequest(BaseModel):
+    family_pool_id: int
+    user_id: int
 
 
 @router.post("/create_family_member")
@@ -25,6 +31,7 @@ def create_family_member(payload: FamilyPoolCreate, db: Session = Depends(get_db
         chief_id=payload.chief_id,
         member_id=member.id,
         family_name=payload.family_name,
+        is_accepted=False,
     )
     db.add(new_entry)
     db.commit()
@@ -56,6 +63,16 @@ def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     return {"username": user.username}
 
+@router.post("/accept_family_member_request")
+def accept_family_member_request(payload: AcceptFamilyMemberRequest, db: Session = Depends(get_db)):
+    print("totooooooo")
+    print("Accepting family member request with payload:", payload)
+    family_member = db.query(FamilyPool).filter(FamilyPool.id == payload.family_pool_id and FamilyPool.member_id == payload.user_id).first()
+    if not family_member:
+        raise HTTPException(status_code=404, detail="Family member not found")
+    family_member.is_accepted = True
+    db.commit()
+    return {"msg": "Family member request accepted"}
 
 @router.delete("/remove_family_member/{family_pool_id}")
 def remove_family_member(family_pool_id: int, db: Session = Depends(get_db)):
