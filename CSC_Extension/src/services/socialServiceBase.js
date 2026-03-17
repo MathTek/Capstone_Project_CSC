@@ -31,7 +31,7 @@ export function createSocialServiceHelpers({ backendUrl, requestTimeout }) {
     });
   }
 
-  async function sendPIIList(piiList) {
+  async function sendPIIList(piiList, smedia) {
     try {
       const authState = await AuthStorageService.getAuthState();
       const userId    = authState?.userInfo?.id;
@@ -43,7 +43,7 @@ export function createSocialServiceHelpers({ backendUrl, requestTimeout }) {
       const response = await browserFetch(`${backendUrl}/calculate_score`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ pii_list: piiList, user_id: userId }),
+        body:    JSON.stringify({ pii_list: piiList, user_id: userId, media: smedia || null }),
       });
 
       if (!response.ok) {

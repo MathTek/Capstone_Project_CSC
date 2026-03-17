@@ -70,6 +70,7 @@ export async function signup(username, email, password, display_consent, cgu) {
       body: JSON.stringify({ username, email, password, display_consent, cgu })
     });
 
+
     const data = await res.json();
     if (!res.ok) {
       console.error("Signup failed:", data.detail);
@@ -78,7 +79,7 @@ export async function signup(username, email, password, display_consent, cgu) {
 
     await AuthStorageService.saveAuthState(
       data.access_token || 'dummy-token',
-      { username, email, id: data.user_id || 1 }
+      { username, email, id: data.user_id || 1, display_content: data.display_content || false }
     );
 
     return true;

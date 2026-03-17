@@ -37,7 +37,7 @@ async function processXProfileResponse(response, stores) {
 
 
   const piiList = aggregatePII(currentResults);
-  const score   = await sendPIIList(piiList);
+  const score   = await sendPIIList(piiList, "X");
 
   if (score !== null) {
     profileInfo.set({
