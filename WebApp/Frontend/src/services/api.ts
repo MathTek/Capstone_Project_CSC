@@ -268,13 +268,14 @@ export async function getUserById(token: string | null, userId: number): Promise
   }
 }
 
-export async function removeFamilyMember(token: string | null, familyPoolId: number): Promise<any> {
+export async function removeFamilyMember(token: string | null, familyPoolId: number, context: string): Promise<any> {
   try {
     const response = await fetch(`${API_BASE_URL}/remove_family_member/${familyPoolId}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`,
       },
+      body: JSON.stringify({ context }),
     });
 
     if (!response.ok) {

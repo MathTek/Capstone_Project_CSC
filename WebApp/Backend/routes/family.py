@@ -77,16 +77,18 @@ async def accept_family_member_request(payload: AcceptFamilyMemberRequest, db: S
 
     ws_manager = request.app.state.ws_manager if request else None
     if ws_manager:
-        await ws_manager.broadcast(f"family_accept:{family_member.chief_id}")
+        await ws_manager.broadcast(f"family_accept:{family_member.member_id}")
 
     return {"msg": "Family member request accepted"}
 
 @router.delete("/remove_family_member/{family_pool_id}")
 async def remove_family_member(family_pool_id: int, db: Session = Depends(get_db), request: Request = None):
+    context = (await request.json()).get("context", "unknown") if request else "unknown"
+    member_removed = db.query(FamilyPool).filter(FamilyPool.id == family_pool_id).first()
     db.query(FamilyPool).filter(FamilyPool.id == family_pool_id).delete()
     db.commit()
 
     ws_manager = request.app.state.ws_manager if request else None
     if ws_manager:
-        await ws_manager.broadcast(f"family_remove:{family_pool_id}")
+        await ws_manager.broadcast(f"family_remove:{member_removed.member_id}:{context}")
     return {"msg": "Family member removed successfully"}

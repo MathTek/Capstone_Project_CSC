@@ -75,12 +75,22 @@ export default function FamilyPool() {
         }
     };
 
-    const handleRemoveFamilyMember = async (memberId: number) => {
+    const handleRemoveFamilyMember = async (memberId: number, context: string) => {
         for (const member of familyMembers) {
             if (member.member_id === memberId) {
                 try {
-                    await removeFamilyMember(localStorage.getItem("csc_token"), member.id);
-                    showAlert('success', 'Family member removed successfully!');
+                    await removeFamilyMember(localStorage.getItem("csc_token"), member.id, context);
+                    switch (context) {
+                        case "leave":
+                            showAlert('success', 'You left the family successfully!');
+                            break;
+                        case "decline":
+                            showAlert('success', 'Family member request declined successfully!');
+                            break;
+                        case "kick":
+                            showAlert('success', 'Family member removed successfully!');
+                            break;
+                    }
                     await fetchFamilyMembers();
                 } catch (error) {
                     console.error("Error removing family member:", error);
@@ -162,7 +172,6 @@ export default function FamilyPool() {
         await acceptFamilyMemberRequest(token, familyPoolId, userId);
         console.log("Accepted family member request for family pool ID:", familyPoolId);
     };
-    const handleDeclineRequest = async () => {}
 
     useEffect(() => {
         fetchFamilyMembers();
@@ -231,11 +240,36 @@ export default function FamilyPool() {
                     </p>
                 </div>
                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-                        Your Family{familyMembers.length > 0 && familyMembers[0].family_name ? `: ${familyMembers[0].family_name}` : ""}
-                    </h2>
+                    {familyExists && <div className="mb-6 flex items-center justify-between">
+
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+                            Your Family{familyMembers.length > 0 && familyMembers[0].family_name ? `: ${familyMembers[0].family_name}` : ""}
+                        </h2>
+                          <button className="mb-6 px-4 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg transition-colors text-sm font-medium" onClick={handleRemoveFamilyMember.bind(null, parseInt(localStorage.getItem("csc_user_id") || "0"), "leave")}>
+                            Leave family pool
+                        </button>
+                    </div>}
                     {!familyExists ? (
-                        <>
+                        <div className="text-center py-12 px-4 flex flex-col items-center gap-6">
+                            {isRequestAccepted == false && (
+                                <div className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-600 rounded-lg">
+                                    <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                                    You have been invited to join the family pool "<span className="font-semibold">{requestInfo?.familyName || "Unknown Family"}</span>" by <span className="font-semibold">{requestInfo?.chiefUsername || "Unknown Chief"}</span>. You can accept or decline this request.
+                                    </p>
+                                    <div className="mt-4 flex gap-4 justify-center">
+                                        <button className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                                            onClick={handleAcceptRequest}
+                                            >
+                                            Accept Request
+                                        </button>
+                                        <button className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                                            onClick={handleRemoveFamilyMember.bind(null, parseInt(localStorage.getItem("csc_user_id") || "0"), "decline")}
+                                            >
+                                            Decline Request
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                             <div>
                                 <p className="text-gray-600 dark:text-gray-400">
                                     You don't have a family pool yet. Create one to monitor and protect your family members' privacy.
@@ -246,26 +280,7 @@ export default function FamilyPool() {
                                     + Create Family Pool
                                 </button>
                             </div>
-                            {isRequestAccepted == false && (
-                                <div className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-600 rounded-lg">
-                                    <p className="text-sm text-yellow-800 dark:text-yellow-300">
-                                    You have been invited to join the family pool "<span className="font-semibold">{requestInfo?.familyName || "Unknown Family"}</span>" by <span className="font-semibold">{requestInfo?.chiefUsername || "Unknown Chief"}</span>. You can accept or decline this request.
-                                    </p>
-                                    <div className="mt-4 flex gap-4">
-                                        <button className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-                                            onClick={handleAcceptRequest}
-                                            >
-                                            Accept Request
-                                        </button>
-                                        <button className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                                            onClick={handleDeclineRequest}
-                                            >
-                                            Decline Request
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </>
+                        </div>
                     ) : (
                         <div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -345,7 +360,7 @@ export default function FamilyPool() {
                                             )}
                                             {isChief && member.is_accepted === true && (
                                                 <button
-                                                onClick={() => handleRemoveFamilyMember(member.member_id)}
+                                                onClick={() => handleRemoveFamilyMember(member.member_id, "kick")}
                                                 className="px-4 py-2.5 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg transition-colors text-sm font-medium"
                                                 title="Remove member"
                                                 >
