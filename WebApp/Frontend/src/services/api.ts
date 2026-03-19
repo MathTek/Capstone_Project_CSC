@@ -290,3 +290,28 @@ export async function removeFamilyMember(token: string | null, familyPoolId: num
     throw new APIError(0, 'Unable to connect to server');
   }
 }
+
+export async function acceptFamilyMemberRequest(token: string | null, familyPoolId: number | undefined, user_id: number): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/accept_family_member_request`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ family_pool_id: familyPoolId, user_id }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to accept family member request' }));
+      throw new APIError(response.status, error.detail || 'Failed to accept family member request');
+    }
+
+    return await response.json();
+  } catch (error) {
+    if (error instanceof APIError) {
+      throw error;
+    }
+    throw new APIError(0, 'Unable to connect to server');
+  }
+}

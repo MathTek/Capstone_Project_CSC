@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { getFamilyPoolByUserId, createFamilyMember, getUserById, removeFamilyMember } from "../services/api";
+import { getFamilyPoolByUserId, createFamilyMember, getUserById, removeFamilyMember, acceptFamilyMemberRequest } from "../services/api";
 
 interface FamilyMember {
     id: number;
@@ -18,6 +18,8 @@ export default function FamilyPool() {
     const memberUsernameRef = useRef<HTMLInputElement>(null);
     const [chiefUsername, setChiefUsername] = useState<string>("");
     const [familyNameForAdd, setFamilyNameForAdd] = useState<string>("");
+    const [isRequestAccepted, setIsRequestAccepted] = useState<boolean | undefined>(undefined);
+    const [requestInfo, setRequestInfo] = useState<{ familyPoolId: number; chiefUsername: string; familyName: string } | null>(null);
 
     const [alert, setAlert] = useState<{ show: boolean; type: 'success' | 'error'; message: string }>({
         show: false,
@@ -91,25 +93,54 @@ export default function FamilyPool() {
     const fetchFamilyMembers = async () => {
         const response = await getFamilyPoolByUserId(localStorage.getItem("csc_token"), parseInt(localStorage.getItem("csc_user_id") || "0"));
         const members = response.family_pool || [];
+        console.log("Fetched family members:", members);
 
-        
+        const currentUserId = parseInt(localStorage.getItem("csc_user_id") || "0");
+        let requestAccepted: boolean | undefined = undefined;
+        let localRequestInfo: { familyPoolId: number; chiefUsername: string; familyName: string } | null = null;
+
         if (members.length > 0) {
+            for (const member of members) {
+                if (member.member_id === currentUserId) {
+                    requestAccepted = member.is_accepted;
+                    if (!member.is_accepted) {
+                        const chiefUsername = await getUserByID(member.chief_id) || "Chief";
+                        localRequestInfo = {
+                            familyPoolId: member.id,
+                            chiefUsername,
+                            familyName: member.family_name || "",
+                        };
+                    }
+                }
+                if (member.chief_id === currentUserId) {
+                    requestAccepted = true;
+                }
+            }
+        }
+
+        if (requestAccepted !== undefined) {
+            setIsRequestAccepted(requestAccepted);
+        } else {
+            setIsRequestAccepted(undefined);
+        }
+        setRequestInfo(localRequestInfo);
+
+        if (members.length > 0 && requestAccepted) {
             setFamilyExists(true);
-            members.forEach(async (member: any) => {
-                if (member.chief_id === parseInt(localStorage.getItem("csc_user_id") || "0")) {
+            for (const member of members) {
+                if (member.chief_id === currentUserId) {
                     setFamilyNameForAdd(member.family_name || "");
-                    setChiefUsername(await getUserByID(member.chief_id) || "Chief");
+                    setChiefUsername((await getUserByID(member.chief_id)) || "Chief");
                     setIsChief(true);
                 } else {
-                    setChiefUsername(await getUserByID(member.chief_id) || "Chief");
+                    setChiefUsername((await getUserByID(member.chief_id)) || "Chief");
                     setIsChief(false);
                 }
-            });
+            }
         } else {
             setFamilyExists(false);
             setIsChief(false);
         }
-
 
         setFamilyMembers(members);
 
@@ -122,6 +153,16 @@ export default function FamilyPool() {
         );
         setMemberUsernames(usernames);
     };
+
+    const handleAcceptRequest = async () => {
+        const token = localStorage.getItem("csc_token");
+        const familyPoolId = requestInfo?.familyPoolId;
+        const userId = parseInt(localStorage.getItem("csc_user_id") || "0");
+        console.log("Accepting family member request with token:", token, "familyPoolId:", familyPoolId, "userId:", userId);
+        await acceptFamilyMemberRequest(token, familyPoolId, userId);
+        console.log("Accepted family member request for family pool ID:", familyPoolId);
+    };
+    const handleDeclineRequest = async () => {}
 
     useEffect(() => {
         fetchFamilyMembers();
@@ -184,16 +225,37 @@ export default function FamilyPool() {
                         Your Family{familyMembers.length > 0 && familyMembers[0].family_name ? `: ${familyMembers[0].family_name}` : ""}
                     </h2>
                     {!familyExists ? (
-                        <div>
-                            <p className="text-gray-600 dark:text-gray-400">
-                                You don't have a family pool yet. Create one to monitor and protect your family members' privacy.
-                            </p>
-                            <button className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                                onClick={handleCreateFamilyMember}
-                            >
-                                + Create Family Pool
-                            </button>
-                        </div>
+                        <>
+                            <div>
+                                <p className="text-gray-600 dark:text-gray-400">
+                                    You don't have a family pool yet. Create one to monitor and protect your family members' privacy.
+                                </p>
+                                <button className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                    onClick={handleCreateFamilyMember}
+                                >
+                                    + Create Family Pool
+                                </button>
+                            </div>
+                            {isRequestAccepted == false && (
+                                <div className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-600 rounded-lg">
+                                    <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                                    You have been invited to join the family pool "<span className="font-semibold">{requestInfo?.familyName || "Unknown Family"}</span>" by <span className="font-semibold">{requestInfo?.chiefUsername || "Unknown Chief"}</span>. You can accept or decline this request.
+                                    </p>
+                                    <div className="mt-4 flex gap-4">
+                                        <button className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                                            onClick={handleAcceptRequest}
+                                            >
+                                            Accept Request
+                                        </button>
+                                        <button className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                                            onClick={handleDeclineRequest}
+                                            >
+                                            Decline Request
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     ) : (
                         <div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -225,12 +287,21 @@ export default function FamilyPool() {
                                 {familyMembers.map((member: any) => (
                                     <div key={member.id} className="relative bg-white dark:bg-gray-700 rounded-xl p-5 border border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md transition-shadow">
                                         <div className="absolute -top-2 -right-2">
-                                            <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 rounded-full">
-                                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                                                </svg>
-                                                Member
-                                            </span>
+                                            {member.is_accepted === true ? (
+                                                <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 rounded-full">
+                                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                                    </svg>
+                                                    Member
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 rounded-full">
+                                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                                    </svg>
+                                                    Pending
+                                                </span>
+                                            )}
                                         </div>
                                         {member.member_id === parseInt(localStorage.getItem("csc_user_id") || "0") && (
                                             <div className="absolute -top-2 -left-2">
@@ -251,6 +322,7 @@ export default function FamilyPool() {
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
+                                            {member.is_accepted === true && (
                                             <button
                                                 onClick={() => navigate(`/family-scan-history/${member.member_id}`)}
                                                 className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-2"
@@ -260,15 +332,16 @@ export default function FamilyPool() {
                                                 </svg>
                                                 History
                                             </button>
-                                            {isChief && (
+                                            )}
+                                            {isChief && member.is_accepted === true && (
                                                 <button
-                                                    onClick={() => handleRemoveFamilyMember(member.member_id)}
-                                                    className="px-4 py-2.5 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg transition-colors text-sm font-medium"
-                                                    title="Remove member"
+                                                onClick={() => handleRemoveFamilyMember(member.member_id)}
+                                                className="px-4 py-2.5 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg transition-colors text-sm font-medium"
+                                                title="Remove member"
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
                                                 </button>
                                             )}
                                         </div>

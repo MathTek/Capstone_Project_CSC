@@ -67,5 +67,7 @@ class FamilyPool(Base):
     chief_id = Column(Integer, nullable=False)
     member_id = Column(Integer, nullable=False)
     family_name = Column(String(100), nullable=False)
+    is_accepted = Column(Boolean, default=False, nullable=False)
     added_at = Column(DateTime(timezone=True), server_default=func.now())
+
 
