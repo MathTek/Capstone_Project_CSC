@@ -15,6 +15,7 @@ import ScanDetails from './pages/ScanDetails';
 import FamilyPool from './pages/FamilyPool';
 import FamilyScanHistory from './pages/FamilyScanHistory';
 import TermsCondition from './pages/TermsConditon';
+import ScanComparison from './pages/ScanComparison';
 
 function AppContent() {
   const location = useLocation();
@@ -77,6 +78,12 @@ function AppContent() {
         />
         <Route path="/education" element={<Education />} />
         <Route path="/terms" element={<TermsCondition />} />
+
+        <Route path='/scan-comparison' element={
+          <ProtectedRoute>
+            <ScanComparison />
+          </ProtectedRoute>
+        } />
       </Routes>
     </div>
   );

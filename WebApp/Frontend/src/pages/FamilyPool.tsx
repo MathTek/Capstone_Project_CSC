@@ -168,9 +168,7 @@ export default function FamilyPool() {
         const token = localStorage.getItem("csc_token");
         const familyPoolId = requestInfo?.familyPoolId;
         const userId = parseInt(localStorage.getItem("csc_user_id") || "0");
-        console.log("Accepting family member request with token:", token, "familyPoolId:", familyPoolId, "userId:", userId);
         await acceptFamilyMemberRequest(token, familyPoolId, userId);
-        console.log("Accepted family member request for family pool ID:", familyPoolId);
     };
 
     useEffect(() => {

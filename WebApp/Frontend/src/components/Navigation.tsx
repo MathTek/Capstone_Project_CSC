@@ -59,7 +59,6 @@ export default function Navigation() {
                   setNotifications((prev) => [...prev, `A family pool invitation has been accepted by ${user.username}.     ${localedate}`]);
                   setNotificationCount((prev) => prev + 1);
                 }
-                console.log("Received WebSocket message:", msg.data);
                 if ( msg.data.startsWith("family_remove:") && msg.data.includes(`${userId}`) && msg.data.includes("kick")) {
                     const localedate = new Date().toLocaleString();
                     setNotifications((prev) => [...prev, "You have been removed from a family pool.     " + localedate]);
