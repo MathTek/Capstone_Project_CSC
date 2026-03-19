@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { getFamilyPoolByUserId, createFamilyMember, getUserById, removeFamilyMember, acceptFamilyMemberRequest } from "../services/api";
+import { getFamilyPoolByUserId, createFamilyMember, getUserById, removeFamilyMember, acceptFamilyMemberRequest, fetchWs } from "../services/api";
 
 interface FamilyMember {
     id: number;
@@ -66,7 +66,8 @@ export default function FamilyPool() {
 
         try {
             const response = await createFamilyMember(localStorage.getItem("csc_token"), userId, familyName, member_username);
-            showAlert('success', 'Family member added successfully!');
+            showAlert('success', 'Family member request sent successfully!');
+            fetchWs(localStorage.getItem("csc_token"), userId);
             await fetchFamilyMembers();
         } catch (error) {
             console.error("Error creating family member:", error);
@@ -74,12 +75,22 @@ export default function FamilyPool() {
         }
     };
 
-    const handleRemoveFamilyMember = async (memberId: number) => {
+    const handleRemoveFamilyMember = async (memberId: number, context: string) => {
         for (const member of familyMembers) {
             if (member.member_id === memberId) {
                 try {
-                    await removeFamilyMember(localStorage.getItem("csc_token"), member.id);
-                    showAlert('success', 'Family member removed successfully!');
+                    await removeFamilyMember(localStorage.getItem("csc_token"), member.id, context);
+                    switch (context) {
+                        case "leave":
+                            showAlert('success', 'You left the family successfully!');
+                            break;
+                        case "decline":
+                            showAlert('success', 'Family member request declined successfully!');
+                            break;
+                        case "kick":
+                            showAlert('success', 'Family member removed successfully!');
+                            break;
+                    }
                     await fetchFamilyMembers();
                 } catch (error) {
                     console.error("Error removing family member:", error);
@@ -93,7 +104,6 @@ export default function FamilyPool() {
     const fetchFamilyMembers = async () => {
         const response = await getFamilyPoolByUserId(localStorage.getItem("csc_token"), parseInt(localStorage.getItem("csc_user_id") || "0"));
         const members = response.family_pool || [];
-        console.log("Fetched family members:", members);
 
         const currentUserId = parseInt(localStorage.getItem("csc_user_id") || "0");
         let requestAccepted: boolean | undefined = undefined;
@@ -162,11 +172,29 @@ export default function FamilyPool() {
         await acceptFamilyMemberRequest(token, familyPoolId, userId);
         console.log("Accepted family member request for family pool ID:", familyPoolId);
     };
-    const handleDeclineRequest = async () => {}
 
     useEffect(() => {
         fetchFamilyMembers();
+        const userId = parseInt(localStorage.getItem("csc_user_id") || "0");
+        const ws = new WebSocket(`ws://localhost:8000/ws/${userId}`);
+        ws.onmessage = (msg) => {
+            if (typeof msg.data === "string") {
+                if (msg.data.startsWith("family_invite:") || msg.data.startsWith("family_accept:") || msg.data.startsWith("family_remove:")) {
+                    fetchFamilyMembers();
+                }
+            }
+        };
+        return () => ws.close();
     }, []);
+
+    const [confirmModal, setConfirmModal] = useState<{ open: boolean; onConfirm: (() => void) | null; message: string }>({ open: false, onConfirm: null, message: '' });
+
+    const openConfirmModal = (message: string, onConfirm: () => void) => {
+        setConfirmModal({ open: true, onConfirm, message });
+    };
+    const closeConfirmModal = () => {
+        setConfirmModal({ open: false, onConfirm: null, message: '' });
+    };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 py-8">
@@ -221,11 +249,36 @@ export default function FamilyPool() {
                     </p>
                 </div>
                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-                        Your Family{familyMembers.length > 0 && familyMembers[0].family_name ? `: ${familyMembers[0].family_name}` : ""}
-                    </h2>
+                    {familyExists && <div className="mb-6 flex items-center justify-between">
+
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+                            Your Family{familyMembers.length > 0 && familyMembers[0].family_name ? `: ${familyMembers[0].family_name}` : ""}
+                        </h2>
+                          <button className="mb-6 px-4 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg transition-colors text-sm font-medium" 
+  onClick={() => openConfirmModal('Are you sure you want to leave the family pool?', () => handleRemoveFamilyMember(parseInt(localStorage.getItem("csc_user_id") || "0"), "leave"))}>
+  Leave family pool
+</button>
+                    </div>}
                     {!familyExists ? (
-                        <>
+                        <div className="text-center py-12 px-4 flex flex-col items-center gap-6">
+                            {isRequestAccepted == false && (
+                                <div className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-600 rounded-lg">
+                                    <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                                    You have been invited to join the family pool "<span className="font-semibold">{requestInfo?.familyName || "Unknown Family"}</span>" by <span className="font-semibold">{requestInfo?.chiefUsername || "Unknown Chief"}</span>. You can accept or decline this request.
+                                    </p>
+                                    <div className="mt-4 flex gap-4 justify-center">
+                                        <button className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                                            onClick={handleAcceptRequest}
+                                            >
+                                            Accept Request
+                                        </button>
+                                        <button className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                                            onClick={() => openConfirmModal('Are you sure you want to decline this invitation?', () => handleRemoveFamilyMember(parseInt(localStorage.getItem("csc_user_id") || "0"), "decline"))}>
+                                            Decline Request
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                             <div>
                                 <p className="text-gray-600 dark:text-gray-400">
                                     You don't have a family pool yet. Create one to monitor and protect your family members' privacy.
@@ -236,26 +289,7 @@ export default function FamilyPool() {
                                     + Create Family Pool
                                 </button>
                             </div>
-                            {isRequestAccepted == false && (
-                                <div className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-600 rounded-lg">
-                                    <p className="text-sm text-yellow-800 dark:text-yellow-300">
-                                    You have been invited to join the family pool "<span className="font-semibold">{requestInfo?.familyName || "Unknown Family"}</span>" by <span className="font-semibold">{requestInfo?.chiefUsername || "Unknown Chief"}</span>. You can accept or decline this request.
-                                    </p>
-                                    <div className="mt-4 flex gap-4">
-                                        <button className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-                                            onClick={handleAcceptRequest}
-                                            >
-                                            Accept Request
-                                        </button>
-                                        <button className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                                            onClick={handleDeclineRequest}
-                                            >
-                                            Decline Request
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </>
+                        </div>
                     ) : (
                         <div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -335,7 +369,7 @@ export default function FamilyPool() {
                                             )}
                                             {isChief && member.is_accepted === true && (
                                                 <button
-                                                onClick={() => handleRemoveFamilyMember(member.member_id)}
+                                                onClick={() => openConfirmModal('Are you sure you want to remove this member from the family?', () => handleRemoveFamilyMember(member.member_id, "kick"))}
                                                 className="px-4 py-2.5 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg transition-colors text-sm font-medium"
                                                 title="Remove member"
                                                 >
@@ -456,6 +490,21 @@ export default function FamilyPool() {
                     </div>
                 </div>
             )}
+
+            {confirmModal.open && (
+  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
+      <div className="px-6 py-5">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Confirmation</h3>
+        <p className="text-gray-700 dark:text-gray-300 mb-6">{confirmModal.message}</p>
+        <div className="flex gap-3">
+          <button onClick={closeConfirmModal} className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-medium">Cancel</button>
+          <button onClick={() => { confirmModal.onConfirm && confirmModal.onConfirm(); closeConfirmModal(); }} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
         </div>
     );
 }

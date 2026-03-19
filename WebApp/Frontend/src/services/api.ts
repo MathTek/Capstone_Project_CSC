@@ -268,13 +268,14 @@ export async function getUserById(token: string | null, userId: number): Promise
   }
 }
 
-export async function removeFamilyMember(token: string | null, familyPoolId: number): Promise<any> {
+export async function removeFamilyMember(token: string | null, familyPoolId: number, context: string): Promise<any> {
   try {
     const response = await fetch(`${API_BASE_URL}/remove_family_member/${familyPoolId}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`,
       },
+      body: JSON.stringify({ context }),
     });
 
     if (!response.ok) {
@@ -314,4 +315,17 @@ export async function acceptFamilyMemberRequest(token: string | null, familyPool
     }
     throw new APIError(0, 'Unable to connect to server');
   }
+}
+
+export async function fetchWs(token: string | null, userId: number): Promise<WebSocket> {
+  const ws = new WebSocket(`ws://localhost:8000/ws/${userId}`);
+  ws.onmessage = function(msg) {
+    console.log("Received message:", msg.data);
+  };
+
+  function sendMessage(msg: string) {
+    ws.send(msg);
+  }
+  sendMessage(`test ${userId}`);
+  return ws;
 }
