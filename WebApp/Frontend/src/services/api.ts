@@ -315,3 +315,16 @@ export async function acceptFamilyMemberRequest(token: string | null, familyPool
     throw new APIError(0, 'Unable to connect to server');
   }
 }
+
+export async function fetchWs(token: string | null, userId: number): Promise<WebSocket> {
+  const ws = new WebSocket(`ws://localhost:8000/ws/${userId}`);
+  ws.onmessage = function(msg) {
+    console.log("Received message:", msg.data);
+  };
+
+  function sendMessage(msg: string) {
+    ws.send(msg);
+  }
+  sendMessage(`test ${userId}`);
+  return ws;
+}

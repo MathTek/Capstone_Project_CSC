@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { getFamilyPoolByUserId, createFamilyMember, getUserById, removeFamilyMember, acceptFamilyMemberRequest } from "../services/api";
+import { getFamilyPoolByUserId, createFamilyMember, getUserById, removeFamilyMember, acceptFamilyMemberRequest, fetchWs } from "../services/api";
 
 interface FamilyMember {
     id: number;
@@ -66,7 +66,8 @@ export default function FamilyPool() {
 
         try {
             const response = await createFamilyMember(localStorage.getItem("csc_token"), userId, familyName, member_username);
-            showAlert('success', 'Family member added successfully!');
+            showAlert('success', 'Family member request sent successfully!');
+            fetchWs(localStorage.getItem("csc_token"), userId);
             await fetchFamilyMembers();
         } catch (error) {
             console.error("Error creating family member:", error);
@@ -93,7 +94,6 @@ export default function FamilyPool() {
     const fetchFamilyMembers = async () => {
         const response = await getFamilyPoolByUserId(localStorage.getItem("csc_token"), parseInt(localStorage.getItem("csc_user_id") || "0"));
         const members = response.family_pool || [];
-        console.log("Fetched family members:", members);
 
         const currentUserId = parseInt(localStorage.getItem("csc_user_id") || "0");
         let requestAccepted: boolean | undefined = undefined;
@@ -166,6 +166,16 @@ export default function FamilyPool() {
 
     useEffect(() => {
         fetchFamilyMembers();
+        const userId = parseInt(localStorage.getItem("csc_user_id") || "0");
+        const ws = new WebSocket(`ws://localhost:8000/ws/${userId}`);
+        ws.onmessage = (msg) => {
+            if (typeof msg.data === "string") {
+                if (msg.data.startsWith("family_invite:") || msg.data.startsWith("family_accept:") || msg.data.startsWith("family_remove:")) {
+                    fetchFamilyMembers();
+                }
+            }
+        };
+        return () => ws.close();
     }, []);
 
   return (
