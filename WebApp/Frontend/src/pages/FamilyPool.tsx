@@ -187,6 +187,15 @@ export default function FamilyPool() {
         return () => ws.close();
     }, []);
 
+    const [confirmModal, setConfirmModal] = useState<{ open: boolean; onConfirm: (() => void) | null; message: string }>({ open: false, onConfirm: null, message: '' });
+
+    const openConfirmModal = (message: string, onConfirm: () => void) => {
+        setConfirmModal({ open: true, onConfirm, message });
+    };
+    const closeConfirmModal = () => {
+        setConfirmModal({ open: false, onConfirm: null, message: '' });
+    };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 py-8">
             {alert.show && (
@@ -245,9 +254,10 @@ export default function FamilyPool() {
                         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
                             Your Family{familyMembers.length > 0 && familyMembers[0].family_name ? `: ${familyMembers[0].family_name}` : ""}
                         </h2>
-                          <button className="mb-6 px-4 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg transition-colors text-sm font-medium" onClick={handleRemoveFamilyMember.bind(null, parseInt(localStorage.getItem("csc_user_id") || "0"), "leave")}>
-                            Leave family pool
-                        </button>
+                          <button className="mb-6 px-4 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg transition-colors text-sm font-medium" 
+  onClick={() => openConfirmModal('Are you sure you want to leave the family pool?', () => handleRemoveFamilyMember(parseInt(localStorage.getItem("csc_user_id") || "0"), "leave"))}>
+  Leave family pool
+</button>
                     </div>}
                     {!familyExists ? (
                         <div className="text-center py-12 px-4 flex flex-col items-center gap-6">
@@ -263,8 +273,7 @@ export default function FamilyPool() {
                                             Accept Request
                                         </button>
                                         <button className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                                            onClick={handleRemoveFamilyMember.bind(null, parseInt(localStorage.getItem("csc_user_id") || "0"), "decline")}
-                                            >
+                                            onClick={() => openConfirmModal('Are you sure you want to decline this invitation?', () => handleRemoveFamilyMember(parseInt(localStorage.getItem("csc_user_id") || "0"), "decline"))}>
                                             Decline Request
                                         </button>
                                     </div>
@@ -360,7 +369,7 @@ export default function FamilyPool() {
                                             )}
                                             {isChief && member.is_accepted === true && (
                                                 <button
-                                                onClick={() => handleRemoveFamilyMember(member.member_id, "kick")}
+                                                onClick={() => openConfirmModal('Are you sure you want to remove this member from the family?', () => handleRemoveFamilyMember(member.member_id, "kick"))}
                                                 className="px-4 py-2.5 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg transition-colors text-sm font-medium"
                                                 title="Remove member"
                                                 >
@@ -481,6 +490,21 @@ export default function FamilyPool() {
                     </div>
                 </div>
             )}
+
+            {confirmModal.open && (
+  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
+      <div className="px-6 py-5">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Confirmation</h3>
+        <p className="text-gray-700 dark:text-gray-300 mb-6">{confirmModal.message}</p>
+        <div className="flex gap-3">
+          <button onClick={closeConfirmModal} className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-medium">Cancel</button>
+          <button onClick={() => { confirmModal.onConfirm && confirmModal.onConfirm(); closeConfirmModal(); }} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
         </div>
     );
 }
