@@ -4,7 +4,6 @@ import { AuthProvider } from './contexts/AuthContext';
 import Navigation from './components/Navigation';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
-import Dashboard from './pages/Dashboard';
 import DashboardInteractive from './pages/DashboardInteractive';
 import RiskVisualization from './pages/RiskVisualization';
 import Education from './pages/Education';
