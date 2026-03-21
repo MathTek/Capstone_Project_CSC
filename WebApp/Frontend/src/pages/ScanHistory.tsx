@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getScansByUserId, deleteScanById } from '../services/api';
-import { Shield, Calendar, AlertTriangle, CheckCircle, Clock, Eye, TrendingUp, TrendingDown, Minus, Trash, X } from 'lucide-react';
+import { Shield, Calendar, AlertTriangle, CheckCircle, Clock, Eye, TrendingUp, TrendingDown, Minus, Trash, X, GitCompare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 
@@ -9,6 +9,7 @@ export default function ScanHistory() {
     const [scanHistory, setScanHistory] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [selectedScans, setSelectedScans] = useState<number[]>([]);
     const navigate = useNavigate();
 
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; scanId: number | null; isDeleting: boolean }>({
@@ -161,9 +162,24 @@ export default function ScanHistory() {
                             <Calendar className="w-6 h-6 text-blue-500" />
                             Scan Timeline
                         </h2>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                            {scanHistory.length} scan{scanHistory.length !== 1 ? 's' : ''} found
-                        </span>
+                        <div className="flex items-center gap-4">
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                                {scanHistory.length} scan{scanHistory.length !== 1 ? 's' : ''} found
+                            </span>
+                            <button
+                              className={`px-4 py-2 font-medium rounded-xl flex items-center justify-center gap-2 transition-colors
+                                ${selectedScans.length === 2 ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                              disabled={selectedScans.length !== 2}
+                              onClick={() => {
+                                if (selectedScans.length === 2) {
+                                  navigate(`/scan-comparison?scan1=${selectedScans[0]}&scan2=${selectedScans[1]}`);
+                                }
+                              }}
+                            >
+                              <GitCompare className="w-4 h-4" />
+                              Compare Scans
+                            </button>
+                        </div>
                     </div>
                     
                     {loading && (
@@ -266,19 +282,32 @@ export default function ScanHistory() {
                                                     </div>
                                                 )}
                                             </div>
-                                            <button className="w-full mt-5 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2 group-hover:shadow-lg"
-                                                onClick={() => handleNavigate(`/scan/${scan.id}`)}
-                                            >
+                                            <button className="w-full mt-5 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2" onClick={() => handleNavigate(`/scan/${scan.id}`)}>
                                                 <Eye className="w-4 h-4" />
                                                 View Details
                                             </button>
-                                            <button className="w-full mt-2 py-2.5 px-4 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2 group-hover:shadow-lg"
-                                                onClick={() => openDeleteModal(scan.id)}
-                                            >
+                                            <button className="w-full mt-2 py-2.5 px-4 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2" onClick={() => openDeleteModal(scan.id)}>
                                                 <Trash className="w-4 h-4" />
                                                 Delete this scan
                                             </button>
-                                            <div></div>
+                                            <div className="absolute top-4 left-4 z-30 bg-white dark:bg-gray-800 rounded shadow p-1">
+                                                <input
+                                                  type="checkbox"
+                                                  checked={selectedScans.includes(scan.id)}
+                                                  onChange={e => {
+                                                    setSelectedScans(prev =>
+                                                      e.target.checked
+                                                        ? [...prev, scan.id]
+                                                        : prev.filter(id => id !== scan.id)
+                                                    );
+                                                  }}
+                                                  className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 block"
+                                                  style={{display: 'block'}}
+                                                  disabled={
+                                                    !selectedScans.includes(scan.id) && selectedScans.length === 2
+                                                  }
+                                                />
+                                              </div>
                                         </div>
                                     </div>
                                 );

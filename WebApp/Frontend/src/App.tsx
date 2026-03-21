@@ -4,7 +4,6 @@ import { AuthProvider } from './contexts/AuthContext';
 import Navigation from './components/Navigation';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
-import Dashboard from './pages/Dashboard';
 import DashboardInteractive from './pages/DashboardInteractive';
 import RiskVisualization from './pages/RiskVisualization';
 import Education from './pages/Education';
@@ -15,6 +14,7 @@ import ScanDetails from './pages/ScanDetails';
 import FamilyPool from './pages/FamilyPool';
 import FamilyScanHistory from './pages/FamilyScanHistory';
 import TermsCondition from './pages/TermsConditon';
+import ScanComparison from './pages/ScanComparison';
 
 function AppContent() {
   const location = useLocation();
@@ -77,6 +77,12 @@ function AppContent() {
         />
         <Route path="/education" element={<Education />} />
         <Route path="/terms" element={<TermsCondition />} />
+
+        <Route path='/scan-comparison' element={
+          <ProtectedRoute>
+            <ScanComparison />
+          </ProtectedRoute>
+        } />
       </Routes>
     </div>
   );
