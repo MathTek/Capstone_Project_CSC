@@ -1,6 +1,6 @@
 from typing import List, Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -25,9 +25,14 @@ class ScoreRequest(BaseModel):
 
 
 @router.post("/calculate_score")
-def calculate_score_endpoint(payload: ScoreRequest):
+async def calculate_score_endpoint(payload: ScoreRequest, request: Request = None):
     score = calculate_score(payload.pii_list)
     save_scan_result(payload.user_id, payload.pii_list, score, payload.media)
+
+    ws_manager = request.app.state.ws_manager if request else None
+    if ws_manager:
+        await ws_manager.broadcast(f"new_scan_available:{payload.user_id}")
+
     return {"score": score}
 
 

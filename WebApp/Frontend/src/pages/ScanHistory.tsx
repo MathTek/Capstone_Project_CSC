@@ -24,16 +24,29 @@ export default function ScanHistory() {
 
     useEffect(() => {
         const fetchScanHistory = async () => {
+            const userId = Number(localStorage.getItem('csc_user_id'));
             try {
                 setLoading(true);
-                const data = await getScansByUserId(localStorage.getItem('csc_token') || '', Number(localStorage.getItem('csc_user_id')));
-                setScanHistory(data.scans);
+                const data = await getScansByUserId(localStorage.getItem('csc_token') || '', userId);
+                setScanHistory(data.scans.reverse());
             } catch (err) {
                 console.error('Erreur lors du fetch:', err);
                 setError(err instanceof Error ? err.message : 'Une erreur est survenue');
             } finally {
                 setLoading(false);
             }
+
+            const ws = new WebSocket(`ws://localhost:8000/ws/${userId}`);
+            ws.onmessage = (event) => {
+                const message = event.data;
+                if (message === `new_scan_available:${userId}`) {
+                    fetchScanHistory();
+                }
+            };
+
+            return () => {
+                ws.close();
+            };
         };
 
         fetchScanHistory();
