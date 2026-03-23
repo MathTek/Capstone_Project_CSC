@@ -78,6 +78,11 @@ export default function Navigation() {
                     setNotificationCount((prev) => prev + 1);
                   }
                 }
+                if (msg.data.startsWith("new_scan_available:") && msg.data.includes(`${userId}`)) {
+                  const localedate = new Date().toLocaleString();
+                  setNotifications((prev) => [...prev, "A new scan result is available. Please check the Scan History page for details.     " + localedate]);
+                  setNotificationCount((prev) => prev + 1);
+                }
 
              }
         };

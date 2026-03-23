@@ -13,6 +13,10 @@ export default defineConfig({
           dest: '.'
         },
         {
+          src: 'public/manifest-firefox.json',
+          dest: '.'
+        },
+        {
           src: 'src/popup.html',
           dest: '.'
         },
