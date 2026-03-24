@@ -82,20 +82,19 @@ export default function ScanComparison() {
 
     const getRiskLevel = (score: number | null | undefined) => {
       if (typeof score !== 'number') return 'Unknown';
-      if (score >= 80) return 'Critical';
-      if (score >= 60) return 'High';
-      if (score >= 40) return 'Medium';
-      if (score >= 20) return 'Low';
+      if (score >= 80) return 'Low';
+      if (score >= 60) return 'Medium';
+      if (score >= 40) return 'High';
+      if (score <= 40) return 'Critical';
       return 'Minimal';
     };
 
     const getRiskColor = (score: number | null | undefined) => {
       if (typeof score !== 'number') return 'text-gray-500';
-      if (score >= 80) return 'text-red-600 dark:text-red-400';
-      if (score >= 60) return 'text-orange-600 dark:text-orange-400';
-      if (score >= 40) return 'text-yellow-600 dark:text-yellow-400';
-      if (score >= 20) return 'text-blue-600 dark:text-blue-400';
-      return 'text-green-600 dark:text-green-400';
+      if (score >= 80) return 'text-green-500';
+      if (score >= 60) return 'text-yellow-500';
+      if (score >= 40) return 'text-red-500';
+      return 'text-gray-500 dark:text-red-500';
     };
 
     const getChronoScans = () => {
