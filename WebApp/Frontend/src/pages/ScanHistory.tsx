@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getScansByUserId, deleteScanById } from '../services/api';
-import { Shield, Calendar, AlertTriangle, CheckCircle, Clock, Eye, TrendingUp, TrendingDown, Minus, Trash, X, GitCompare } from 'lucide-react';
+import { Shield, Calendar, AlertTriangle, CheckCircle, Clock, Eye, TrendingUp, TrendingDown, Minus, Trash, X, GitCompare, Globe } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 
@@ -10,6 +10,7 @@ export default function ScanHistory() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedScans, setSelectedScans] = useState<number[]>([]);
+    const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
     const navigate = useNavigate();
 
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; scanId: number | null; isDeleting: boolean }>({
@@ -85,6 +86,10 @@ export default function ScanHistory() {
             : 0,
         lastScan: scanHistory.length > 0 ? scanHistory[scanHistory.length - 1].created_at : null,
     };
+
+    const filteredScans = selectedPlatform 
+        ? scanHistory.filter(scan => scan.media === selectedPlatform)
+        : scanHistory;
 
     const openDeleteModal = (scanId: number) => {
         setDeleteModal({ isOpen: true, scanId, isDeleting: false });
@@ -175,9 +180,68 @@ export default function ScanHistory() {
                             <Calendar className="w-6 h-6 text-blue-500" />
                             Scan Timeline
                         </h2>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 flex-wrap">
+                            <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => setSelectedPlatform(null)}
+                                  className={`p-2 rounded-xl transition-colors flex items-center justify-center ${
+                                    selectedPlatform === null
+                                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
+                                  }`}
+                                  aria-label="All Platforms"
+                                  title="All Platforms"
+                                >
+                                  <Globe className="w-5 h-5" />
+                                </button>
+                                <button
+                                  onClick={() => setSelectedPlatform('Instagram')}
+                                  className={`p-2 rounded-xl transition-colors flex items-center justify-center ${
+                                    selectedPlatform === 'Instagram'
+                                      ? 'ring-2 ring-pink-500 bg-white dark:bg-gray-800'
+                                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                  }`}
+                                  aria-label="Instagram"
+                                  title="Instagram"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-5 h-5">
+                                    <radialGradient id="ig-grad" cx="19.38" cy="42.035" r="44.899" gradientUnits="userSpaceOnUse">
+                                      <stop offset="0" stopColor="#fd5"/>
+                                      <stop offset=".328" stopColor="#ff543f"/>
+                                      <stop offset=".348" stopColor="#fc5245"/>
+                                      <stop offset=".504" stopColor="#e64771"/>
+                                      <stop offset=".643" stopColor="#d53e91"/>
+                                      <stop offset=".761" stopColor="#cc39a4"/>
+                                      <stop offset=".841" stopColor="#c837ab"/>
+                                    </radialGradient>
+                                    <path fill="url(#ig-grad)" d="M34.017 41.99l-20-.002c-4.4 0-8.003-3.602-8.008-8.008l-.007-19.997c-.001-4.4 3.601-8.002 8-8.007l20-.003c4.402 0 8.006 3.602 8.01 8.008l.003 19.994c.002 4.404-3.598 8.008-7.998 8.015z"/>
+                                    <radialGradient id="ig-grad2" cx="11.786" cy="5.54" r="29.813" gradientUnits="userSpaceOnUse">
+                                      <stop offset="0" stopColor="#4168c9"/>
+                                      <stop offset=".999" stopColor="#4168c9" stopOpacity="0"/>
+                                    </radialGradient>
+                                    <path fill="url(#ig-grad2)" d="M34.017 41.99l-20-.002c-4.4 0-8.003-3.602-8.008-8.008l-.007-19.997c-.001-4.4 3.601-8.002 8-8.007l20-.003c4.402 0 8.006 3.602 8.01 8.008l.003 19.994c.002 4.404-3.598 8.008-7.998 8.015z"/>
+                                    <path fill="#fff" d="M24 31c-3.859 0-7-3.14-7-7s3.141-7 7-7 7 3.14 7 7-3.141 7-7 7zm0-12c-2.757 0-5 2.243-5 5s2.243 5 5 5 5-2.243 5-5-2.243-5-5-5z"/>
+                                    <circle cx="31.5" cy="16.5" r="1.5" fill="#fff"/>
+                                    <path fill="#fff" d="M30 37H18c-3.859 0-7-3.14-7-7V18c0-3.86 3.141-7 7-7h12c3.859 0 7 3.14 7 7v12c0 3.86-3.141 7-7 7zm-12-24c-2.757 0-5 2.243-5 5v12c0 2.757 2.243 5 5 5h12c2.757 0 5-2.243 5-5V18c0-2.757-2.243-5-5-5H18z"/>
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => setSelectedPlatform('X')}
+                                  className={`p-2 rounded-xl transition-colors flex items-center justify-center ${
+                                    selectedPlatform === 'X'
+                                      ? 'ring-2 ring-gray-800 dark:ring-white bg-white dark:bg-gray-800'
+                                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                  }`}
+                                  aria-label="X"
+                                  title="X"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
+                                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L2.25 2.25h6.908l4.265 5.638L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117z" className="fill-gray-900 dark:fill-white"/>
+                                  </svg>
+                                </button>
+                            </div>
                             <span className="text-sm text-gray-500 dark:text-gray-400">
-                                {scanHistory.length} scan{scanHistory.length !== 1 ? 's' : ''} found
+                                {filteredScans.length} scan{filteredScans.length !== 1 ? 's' : ''} found
                             </span>
                             <button
                               className={`px-4 py-2 font-medium rounded-xl flex items-center justify-center gap-2 transition-colors
@@ -227,9 +291,21 @@ export default function ScanHistory() {
                         </div>
                     )}
 
-                    {!loading && !error && scanHistory.length > 0 && (
+                    {!loading && !error && scanHistory.length > 0 && filteredScans.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-16 text-center">
+                            <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-full mb-4">
+                                <Shield className="w-12 h-12 text-gray-400 dark:text-gray-500" />
+                            </div>
+                            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No scans found</h3>
+                            <p className="text-gray-600 dark:text-gray-400 max-w-md">
+                                No scans available for the selected platform. Try selecting a different filter.
+                            </p>
+                        </div>
+                    )}
+
+                    {!loading && !error && filteredScans.length > 0 && (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {scanHistory.map((scan: any, index: number) => {
+                            {filteredScans.map((scan: any, index: number) => {
                                 const scoreColors = getScoreColor(scan.score || 0);
                                 const risk = getRiskLevel(scan.score || 0);
                                 const RiskIcon = risk.icon;

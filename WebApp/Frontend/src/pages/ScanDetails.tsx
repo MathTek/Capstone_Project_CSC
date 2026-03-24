@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { getPIIDetailsByScanId, getScoreByScanId, getFeedbacks } from "../services/api";
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Lightbulb, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Lightbulb, AlertCircle, Download } from 'lucide-react';
 import { Mail, Phone, MapPin, AlertTriangle, Shield, CreditCard, Banknote, Paperclip, LucideIcon } from 'lucide-react';
 
 const PII_ASSETS_BY_TYPE: Record<string, [string, LucideIcon, string]> = {
@@ -36,6 +36,10 @@ export default function ScanDetails() {
     const [loading, setLoading] = useState<boolean>(true);
     const [score, setScore] = useState<number>(0);
     const [feedback, setFeedback] = useState<any[]>([]);
+
+    const exportToPDF = () => {
+        window.print();
+    };
 
     
     
@@ -77,19 +81,29 @@ export default function ScanDetails() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 py-8">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div id="scan-printable" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="mb-8">
                     <div className="flex items-center justify-between mb-2">
                         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
                             Scan Details 
                         </h1>
-                        <button
-                            onClick={() => navigate(-1)}
-                            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-all hover:shadow-md"
-                        >
-                            <ArrowLeft className="w-4 h-4" />
-                            Back
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={exportToPDF}
+                                disabled={loading}
+                                className="no-print flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-xl shadow-sm transition-all hover:shadow-md"
+                            >
+                                <Download className="w-4 h-4" />
+                                Export PDF
+                            </button>
+                            <button
+                                onClick={() => navigate(-1)}
+                                className="no-print flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-all hover:shadow-md"
+                            >
+                                <ArrowLeft className="w-4 h-4" />
+                                Back
+                            </button>
+                        </div>
                     </div>
                     {!loading && piiDetails.length > 0 && (
                         <>
@@ -103,6 +117,96 @@ export default function ScanDetails() {
                             Be sure to beware of potential undetected sensitive information.
                         </p>
                     </>
+                    )}
+                </div>
+
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 mb-8">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+                        Feedback and Recommendations
+                    </h2>
+
+                    <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Your Risk Score</h3>
+                                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                                    {score >= 60 ? "Your profile is well protected" : 
+                                     score >= 40 ? "Some improvements are recommended" : 
+                                     "Immediate action is recommended"}
+                                </p>
+                            </div>
+                            <div className="text-right">
+                                <span className={`text-3xl font-bold ${
+                                    score <= 30 ? "text-red-600 dark:text-red-400" : 
+                                    score <= 60 ? "text-yellow-600 dark:text-yellow-400" : 
+                                    "text-green-600 dark:text-green-400"
+                                }`}>{score}</span>
+                                <span className="text-gray-500 dark:text-gray-400 text-lg">/100</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        {Array.from(new Set(piiDetails.map(item => item.pii_type))).map((piiType, idx) => {
+                            const feedbackItem = feedback.find((f: any) => f.pii_type === piiType);
+                            const recommendation = feedbackItem?.advice || "Review and consider removing this information.";
+                            const message = feedbackItem?.message || "";
+                            const impact = feedbackItem?.impact || 0;
+                            
+                            const impactColor = impact >= 40 ? "border-l-red-500 bg-red-50 dark:bg-red-900/20" : 
+                                               impact >= 30 ? "border-l-orange-500 bg-orange-50 dark:bg-orange-900/20" : 
+                                               impact >= 20 ? "border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/20" : 
+                                               "border-l-green-500 bg-green-50 dark:bg-green-900/20";
+
+                            const IconComponent = PII_ASSETS_BY_TYPE[piiType]?.[1] || AlertCircle;
+
+                            return (
+                                <div 
+                                    key={idx} 
+                                    className={`${impactColor} border-l-4 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow`}
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <IconComponent className="w-5 h-5 text-gray-700 dark:text-gray-300 mt-0.5 flex-shrink-0" />
+                                        <div className="flex-1">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <h3 className="font-semibold text-gray-900 dark:text-white">
+                                                    {piiType.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                                                </h3>
+                                                <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                                    impact >= 40 ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" : 
+                                                    impact >= 30 ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300" : 
+                                                    impact >= 20 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300" : 
+                                                    "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                                                }`}>
+                                                    Impact: -{impact} pts
+                                                </span>
+                                            </div>
+                                            
+                                            {message && (
+                                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                                    {message}
+                                                </p>
+                                            )}
+                                            
+                                            <div className="flex items-start gap-2 text-sm">
+                                                <Lightbulb className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                                                <p className="text-gray-700 dark:text-gray-300">
+                                                    {recommendation}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {piiDetails.length === 0 && (
+                        <div className="text-center py-8">
+                            <p className="text-gray-500 dark:text-gray-400">
+                                No sensitive information detected. Your profile appears to be clean.
+                            </p>
+                        </div>
                     )}
                 </div>
 
@@ -241,96 +345,6 @@ export default function ScanDetails() {
                             );
                         })}
                     </div>
-                </div>
-
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-                        Feedback and Recommendations
-                    </h2>
-
-                    <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Your Risk Score</h3>
-                                <p className="text-gray-600 dark:text-gray-400 text-sm">
-                                    {score >= 60 ? "Your profile is well protected" : 
-                                     score >= 40 ? "Some improvements are recommended" : 
-                                     "Immediate action is recommended"}
-                                </p>
-                            </div>
-                            <div className="text-right">
-                                <span className={`text-3xl font-bold ${
-                                    score <= 30 ? "text-red-600 dark:text-red-400" : 
-                                    score <= 60 ? "text-yellow-600 dark:text-yellow-400" : 
-                                    "text-green-600 dark:text-green-400"
-                                }`}>{score}</span>
-                                <span className="text-gray-500 dark:text-gray-400 text-lg">/100</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="space-y-4">
-                        {Array.from(new Set(piiDetails.map(item => item.pii_type))).map((piiType, idx) => {
-                            const feedbackItem = feedback.find((f: any) => f.pii_type === piiType);
-                            const recommendation = feedbackItem?.advice || "Review and consider removing this information.";
-                            const message = feedbackItem?.message || "";
-                            const impact = feedbackItem?.impact || 0;
-                            
-                            const impactColor = impact >= 40 ? "border-l-red-500 bg-red-50 dark:bg-red-900/20" : 
-                                               impact >= 30 ? "border-l-orange-500 bg-orange-50 dark:bg-orange-900/20" : 
-                                               impact >= 20 ? "border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/20" : 
-                                               "border-l-green-500 bg-green-50 dark:bg-green-900/20";
-
-                            const IconComponent = PII_ASSETS_BY_TYPE[piiType]?.[1] || AlertCircle;
-
-                            return (
-                                <div 
-                                    key={idx} 
-                                    className={`${impactColor} border-l-4 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow`}
-                                >
-                                    <div className="flex items-start gap-3">
-                                        <IconComponent className="w-5 h-5 text-gray-700 dark:text-gray-300 mt-0.5 flex-shrink-0" />
-                                        <div className="flex-1">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <h3 className="font-semibold text-gray-900 dark:text-white">
-                                                    {piiType.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
-                                                </h3>
-                                                <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                                    impact >= 40 ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" : 
-                                                    impact >= 30 ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300" : 
-                                                    impact >= 20 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300" : 
-                                                    "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
-                                                }`}>
-                                                    Impact: -{impact} pts
-                                                </span>
-                                            </div>
-                                            
-                                            {message && (
-                                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                                                    {message}
-                                                </p>
-                                            )}
-                                            
-                                            <div className="flex items-start gap-2 text-sm">
-                                                <Lightbulb className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                                                <p className="text-gray-700 dark:text-gray-300">
-                                                    {recommendation}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    {piiDetails.length === 0 && (
-                        <div className="text-center py-8">
-                            <p className="text-gray-500 dark:text-gray-400">
-                                No sensitive information detected. Your profile appears to be clean.
-                            </p>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>

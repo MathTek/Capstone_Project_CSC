@@ -1,3 +1,33 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #scan-printable,
+  #scan-printable * {
+    visibility: visible;
+  }
+  #scan-printable {
+    position: absolute;
+    inset: 0;
+    background: white !important;
+    color: black !important;
+    padding: 24px;
+  }
+  .no-print {
+    display: none !important;
+  }
+  * {
+    background-color: white !important;
+    color: black !important;
+    border-color: #d1d5db !important;
+    box-shadow: none !important;
+  }
+  .dark * {
+    background-color: white !important;
+    color: black !important;
+  }
+}
