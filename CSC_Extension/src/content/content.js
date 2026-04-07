@@ -267,447 +267,7 @@ function cleanStoryTitle(title) {
     .trim();
 }
 
-function getFacebookBio() {
-  // ── Stratégie 1 : XPath exact (le plus précis, fragile si layout change)
-  try {
-    const xpathResult = document.evaluate(
-      '//*[@id="mount_0_0_rf"]/div/div[1]/div/div[3]/div/div/div[1]/div[1]/div/div/div[1]/div[2]/div/div/div/div[2]/div/div/div[2]/span',
-      document,
-      null,
-      XPathResult.FIRST_ORDERED_NODE_TYPE,
-      null
-    );
-    const bioEl = xpathResult.singleNodeValue;
-    const text = bioEl?.textContent?.trim();
-    if (text && text.length > 5 && text.length < 500) return text;
-  } catch (_) {}
 
-  // ── Stratégie 2 : CSS approximatif basé sur la structure XPath
-  // div[3] = 3ème enfant direct de la colonne principale
-  // On cible le mount root, on navigue vers la sidebar (div[3])
-  try {
-    const mount = document.getElementById('mount_0_0_rf');
-    if (mount) {
-      // Reconstitution CSS depuis le XPath
-      const sidebar = mount.querySelector(
-        ':scope > div > div:nth-child(1) > div > div:nth-child(3)'
-      );
-      if (sidebar) {
-        // Dans la sidebar, cibler les spans "orphelins" (bio = texte pur sans lien ni SVG)
-        const spans = sidebar.querySelectorAll('span');
-        for (const span of spans) {
-          if (
-            span.children.length === 0 &&          // texte pur
-            !span.closest('a') &&                   // pas dans un lien
-            !span.closest('[role="button"]') &&     // pas un bouton
-            span.textContent.trim().length > 10 &&
-            span.textContent.trim().length < 500
-          ) {
-            return span.textContent.trim();
-          }
-        }
-      }
-    }
-  } catch (_) {}
-
-  // ── Stratégie 3 : data-pagelet (fallback stable)
-  const pagelet = document.querySelector(
-    '[data-pagelet="ProfileAppSection_0"], [data-pagelet="ProfileTilesFeed_0"]'
-  );
-  if (pagelet) {
-    const spans = pagelet.querySelectorAll('span');
-    for (const span of spans) {
-      const text = span.textContent?.trim();
-      if (
-        span.children.length === 0 &&
-        !span.closest('a') &&
-        !span.closest('[role="button"]') &&
-        text?.length > 10 &&
-        text?.length < 500
-      ) {
-        return text;
-      }
-    }
-  }
-
-  // ── Stratégie 4 : JSON GraphQL injecté par Facebook
-  try {
-    const scripts = document.querySelectorAll('script[type="application/json"]');
-    for (const script of scripts) {
-      const raw = script.textContent ?? '';
-      if (raw.includes('"biography"') || raw.includes('"bio"')) {
-        const json = JSON.parse(raw);
-        const bio = extractDeep(json, 'biography') ?? extractDeep(json, 'bio');
-        if (bio && bio.length > 5 && bio.length < 500) return bio;
-      }
-    }
-  } catch (_) {}
-
-  // ── Stratégie 5 : og:description (bio tronquée)
-  const meta =
-    document.querySelector('meta[property="og:description"]') ??
-    document.querySelector('meta[name="description"]');
-  const metaText = meta?.getAttribute('content')?.trim();
-  if (metaText && metaText.length > 10) return metaText;
-
-  return null;
-}
-
-function extractDeep(obj, key, depth = 0) {
-  if (depth > 12 || !obj || typeof obj !== 'object') return null;
-  if (typeof obj[key] === 'string' && obj[key].length > 0) return obj[key];
-  for (const v of Object.values(obj)) {
-    const found = extractDeep(v, key, depth + 1);
-    if (found) return found;
-  }
-  return null;
-}
-
-function getFacebookPosts() {
-  const posts = [];
-  const seen = new Set();
-  let index = 1;
-
-  // ── Afficher la structure pour debugging
-  function debugStructure() {
-    try {
-      const result = document.evaluate(
-        '//*[@id="mount_0_0_rf"]/div/div[1]/div/div[3]/div/div/div[1]/div[1]/div/div/div[4]/div[2]/div/div[2]/div[3]',
-        document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
-      );
-      const container = /** @type {HTMLElement|null} */ (result.singleNodeValue);
-      if (container) {
-        console.log('=== Facebook Posts Feed Structure ===');
-        console.log(`Container children: ${container.children.length}`);
-        for (let i = 0; i < Math.min(5, container.children.length); i++) {
-          const child = /** @type {HTMLElement} */ (container.children[i]);
-          console.log(`Child ${i}:`, {
-            tagName: child.tagName,
-            className: child.className,
-            childCount: child.children.length,
-            textLength: child.innerText?.length || 0,
-            hasImage: !!child.querySelector('img[src*="scontent"]'),
-            hasVideo: !!child.querySelector('video'),
-            hasLink: !!child.querySelector('a[href*="/posts/"]'),
-          });
-        }
-      }
-    } catch (e) {
-      console.error('Debug error:', e);
-    }
-  }
-
-  // ── Localiser le conteneur feed via le XPath connu
-  function getFeedContainerWithPosts() {
-    // XPath PRÉCIS qui cible le conteneur parent de la liste des posts
-    try {
-      const result = document.evaluate(
-        '//*[@id="mount_0_0_rf"]/div/div[1]/div/div[3]/div/div/div[1]/div[1]/div/div/div[4]/div[2]/div/div[2]/div[3]',
-        document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
-      );
-      if (result.singleNodeValue) {
-        return { type: 'container', result: result.singleNodeValue };
-      }
-    } catch (_) {}
-
-    // Variante CSS du XPath précis
-    try {
-      const mount = document.getElementById('mount_0_0_rf');
-      if (mount) {
-        const feed = mount.querySelector(
-          ':scope > div > div:nth-child(1) > div > div:nth-child(3) > div > div > div:nth-child(1) > div:nth-child(1) > div > div > div:nth-child(4) > div:nth-child(2) > div > div:nth-child(2) > div:nth-child(3)'
-        );
-        if (feed) return { type: 'container', result: feed };
-      }
-    } catch (_) {}
-
-    // XPath fallback ancien pour le conteneur principal
-    try {
-      const result = document.evaluate(
-        '//*[@id="mount_0_0_rf"]/div/div[1]/div/div[3]/div/div/div[1]/div[1]/div/div/div[4]/div[2]/div/div[2]',
-        document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
-      );
-      if (result.singleNodeValue) {
-        return { type: 'container', result: result.singleNodeValue };
-      }
-    } catch (_) {}
-
-    // Fallback CSS depuis le mount root
-    const mount = document.getElementById('mount_0_0_rf');
-    if (mount) {
-      const feed = mount.querySelector(
-        ':scope > div > div:nth-child(1) > div > div:nth-child(3) > div > div > div:nth-child(1) > div:nth-child(1) > div > div > div:nth-child(4) > div:nth-child(2) > div > div:nth-child(2)'
-      );
-      if (feed) return { type: 'container', result: feed };
-    }
-
-    // Fallback data-pagelet
-    const pagelet = (
-      document.querySelector('[data-pagelet="ProfileTimeline"]') ??
-      document.querySelector('[data-pagelet="ProfileSyncedPosts"]') ??
-      document.querySelector('[role="main"]')
-    );
-    if (pagelet) return { type: 'container', result: pagelet };
-
-    return { type: 'none', result: null };
-  }
-
-  // ── Extraire le texte d'un article
-  function extractText(article) {
-    // 1. data-testid legacy
-    const legacy = article.querySelector('[data-testid="post_message"]');
-    if (legacy?.innerText?.trim()) return legacy.innerText.trim();
-
-    // 2. div avec attribut "dir" = conteneur de texte de post FB
-    const dirDivs = article.querySelectorAll('div[dir="auto"]');
-    let best = '';
-    for (const div of dirDivs) {
-      // Exclure les divs qui contiennent d'autres divs[dir] (conteneurs parents)
-      if (div.querySelector('div[dir="auto"]')) continue;
-      const text = div.innerText?.trim() ?? '';
-      if (text.length > best.length) best = text;
-    }
-    if (best.length > 2) return best;
-
-    // 3. Spans directs sans enfants dans l'article
-    for (const span of article.querySelectorAll('span')) {
-      if (span.children.length === 0 && !span.closest('a')) {
-        const text = span.innerText?.trim() ?? '';
-        if (text.length > 20) return text;
-      }
-    }
-
-    return '';
-  }
-
-  // ── Extraire l'URL du post
-  function extractUrl(article) {
-    const patterns = [
-      'a[href*="/posts/"]',
-      'a[href*="/photo.php"]',
-      'a[href*="/watch/"]',
-      'a[href*="/reel/"]',
-      'a[href*="/videos/"]',
-      'a[href*="story_fbid"]',
-      'a[href*="/permalink/"]',
-    ];
-    for (const pattern of patterns) {
-      const link = /** @type {HTMLAnchorElement|null} */ (article.querySelector(pattern));
-      if (link?.href) return link.href;
-    }
-    return null;
-  }
-
-  // ── Extraire le timestamp
-  function extractTimestamp(article) {
-    const timeEl = article.querySelector('abbr[data-utime], time[datetime], abbr[title]');
-    if (!timeEl) return null;
-    return (
-      timeEl.getAttribute('datetime') ??
-      timeEl.getAttribute('data-utime') ??
-      timeEl.getAttribute('title') ??
-      timeEl.innerText?.trim() ??
-      null
-    );
-  }
-
-  // ── Détecter le type de post
-  function detectType(article) {
-    if (article.querySelector('video, [data-testid="video-container"]')) return 'video';
-    if (article.querySelector('a[href*="/reel/"]')) return 'reel';
-    if (article.querySelector('img[src*="scontent"]')) return 'photo';
-    if (article.querySelector('a[href*="/watch/"]')) return 'watch';
-    return 'post';
-  }
-
-  // ── Vérifier si un élément est réellement un post
-  function isRealPost(element) {
-    if (!element || !element.tagName) return false;
-    
-    // Vérifier s'il contient des contenus typiques d'un post
-    const hasText = element.innerText && element.innerText.trim().length > 0;
-    const hasImage = !!element.querySelector('img[src*="scontent"]');
-    const hasVideo = !!element.querySelector('video, [data-testid="video-container"]');
-    const hasLink = !!element.querySelector('a[href*="/posts/"], a[href*="/photo.php"], a[href*="/watch/"], a[href*="/reel/"], a[href*="/videos/"]');
-    const hasTimeElement = !!element.querySelector('abbr[data-utime], time[datetime], abbr[title]');
-    
-    // Un post doit avoir au minimum une de ces caractéristiques
-    return hasText || hasImage || hasVideo || hasLink || hasTimeElement;
-  }
-
-  // ── Main
-  debugStructure(); // Afficher la structure pour debug
-  
-  const feedData = getFeedContainerWithPosts();
-  
-  if (feedData.type === 'container') {
-    // Si c'est un élément DOM, utiliser la méthode classique
-    const feedResult = /** @type {HTMLElement} */ (feedData.result);
-    
-    console.log(`Feed container found with ${feedResult.children.length} direct children`);
-    
-    // Stratégie 1 : parcourir tous les enfants directs
-    let candidates = [...feedResult.children].filter(el => isRealPost(el));
-    
-    console.log(`Strategy 1 (direct children): found ${candidates.length} posts`);
-    
-    // Stratégie 2 : si trop peu de résultats, explorer plus profondément
-    if (candidates.length < 3) {
-      console.log('Strategy 2: Exploring deeper levels...');
-      candidates = [];
-      
-      // Chercher les articles ou les divs qui contiennent du contenu
-      const potentialPosts = feedResult.querySelectorAll('[role="article"], div');
-      const foundPostElements = new Set();
-      
-      for (const element of potentialPosts) {
-        const el = /** @type {HTMLElement} */ (element);
-        
-        // Éviter les doublons (enfants du même post)
-        let isChild = false;
-        for (const found of foundPostElements) {
-          if (found.contains(el)) {
-            isChild = true;
-            break;
-          }
-        }
-        if (isChild) continue;
-        
-        if (isRealPost(el)) {
-          foundPostElements.add(el);
-          candidates.push(el);
-        }
-      }
-      
-      console.log(`Strategy 2: found ${candidates.length} posts`);
-    }
-
-    console.log(`Total candidates: ${candidates.length}`);
-
-    for (const article of candidates) {
-      const articleEl = /** @type {HTMLElement} */ (article);
-
-      const textContent = extractText(articleEl);
-      const url = extractUrl(articleEl);
-      const timestamp = extractTimestamp(articleEl);
-      const type = detectType(articleEl);
-
-      // Vérifier que c'est réellement un post avec du contenu
-      if (!isRealPost(articleEl)) continue;
-      
-      // Éviter les doublons basés sur le texte
-      if (textContent && seen.has(textContent)) continue;
-
-      if (textContent) seen.add(textContent);
-      
-      console.log(`Adding post ${index}: ${textContent?.substring(0, 50) || '(no text)'}`);
-      
-      posts.push({
-        index: index++,
-        content: textContent || '(No caption)',
-        url,
-        timestamp,
-        type,
-      });
-
-      if (posts.length >= 30) break;
-    }
-  }
-
-  console.log(`Extracted ${posts.length} posts from Facebook profile.`);
-  console.log(posts);
-
-  return posts;
-}
-
-function getFacebookUsername() {
-  const userNameSelectors = [
-    '[data-testid="profile_name_header"]',
-    'h1',
-    '[role="banner"] h1',
-    '[data-testid="profile"] h1',
-  ];
-
-  for (const selector of userNameSelectors) {
-    const userNameEl = /** @type {HTMLElement|null} */ (document.querySelector(selector));
-    if (userNameEl) {
-      const text = userNameEl.innerText?.trim();
-      if (text && text.length > 0 && text.length < 100) return text;
-    }
-  }
-
-  const ogProfile = document.querySelector('meta[property="og:title"]');
-  if (ogProfile) {
-    const title = ogProfile.getAttribute('content');
-    if (title) return title.trim();
-  }
-
-  return null;
-}
-
-function getFacebookStats() {
-  const stats = { followers: null, following: null };
-
-  const statLinks = [
-    ...document.querySelectorAll('a[href*="/followers/"]'),
-    ...document.querySelectorAll('a[href*="/friends"]'),
-    ...document.querySelectorAll('[data-testid="profile_stats"] a'),
-  ];
-  
-  for (const link of statLinks) {
-    const linkEl = /** @type {HTMLElement} */ (link);
-    const text = linkEl.textContent?.toLowerCase() || '';
-    const match = text.match(/([\d,KMB.]+)\s*(followers?|amis|friends|suiveurs)/i);
-    
-    if (match) {
-      const number = match[1];
-      if (text.includes('follow') || text.includes('suiveur')) {
-        stats.followers = number;
-      } else if (text.includes('friend') || text.includes('ami')) {
-        stats.following = number;
-      }
-    }
-  }
-
-  return stats;
-}
-
-async function getFullFacebookProfileData() {
-  const { followers, following } = getFacebookStats();
-  return {
-    platform: 'facebook',
-    bio: getFacebookBio(),
-    posts: getFacebookPosts(),
-    stories: [],
-    username: getFacebookUsername(),
-    followers,
-    following,
-    postsCount: null,
-    url: window.location.href,
-    timestamp: new Date().toISOString(),
-  };
-}
-
-function waitForFacebookData(maxMs = 6000) {
-  return new Promise(resolve => {
-    const start = performance.now();
-
-    async function check() {
-      const data = await getFullFacebookProfileData();
-      if (data.bio || data.posts.length > 0) {
-        resolve(data);
-        return;
-      }
-      if (performance.now() - start > maxMs) {
-        resolve(data);
-        return;
-      }
-      requestAnimationFrame(check);
-    }
-
-    check();
-  });
-}
 
 function getXBio() {
   const descEl = /** @type {HTMLElement|null} */ (document.querySelector('[data-testid="UserDescription"]'));
@@ -836,6 +396,312 @@ function waitForXData(maxMs = 6000) {
 
     async function check() {
       const data = await getFullXProfileData();
+      if (data.bio || data.posts.length > 0) {
+        resolve(data);
+        return;
+      }
+      if (performance.now() - start > maxMs) {
+        resolve(data);
+        return;
+      }
+      requestAnimationFrame(check);
+    }
+
+    check();
+  });
+}
+
+function getFacebookBio() {
+ 
+  
+  
+  const mainDiv = /** @type {HTMLElement|null} */ (document.querySelector('div[role="main"]'));
+  if (!mainDiv) {
+    console.log("main div not found");
+    return null;
+  }
+
+
+  
+  const allText = mainDiv.innerText;
+  console.log("Texte complet trouvé:");
+  console.log(allText.substring(0, 300));
+  
+
+  const statsPattern = /(\d+\s+(followers?|ami|suivi|amis|friends|following))\s*(•|\s)?(\d+\s+(followers?|ami|suivi|amis|friends|following))?/i;
+  let statsMatch = allText.match(statsPattern);
+  
+  if (statsMatch) {
+    console.log("Stats trouvées:", statsMatch[0]);
+    
+    const statsStartIndex = allText.indexOf(statsMatch[0]);
+    const statsEndIndex = statsStartIndex + statsMatch[0].length;
+    
+    const textAfterStats = allText.substring(statsEndIndex).trim();
+    console.log("Texte après stats (300 chars):", textAfterStats.substring(0, 300));
+    
+    const lines = textAfterStats.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    
+    let bioLines = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      const uiPatterns = [
+        /^Ajouter à la story$/i,
+        /^Ajouter à la liste$/i,
+        /^Modifier le profil$/i,
+        /^Modifier$/i,
+        /^Promouvoir$/i,
+        /^Tableau de bord professionnel$/i,
+        /^Ajouter un bouton d'appel à l'action$/i,
+        /^Suivre$/i,
+        /^Follow$/i,
+        /^Message$/i,
+        /^Patreon$/i,
+        /^Entreprise informatique$/i,
+        /^Entreprise$/i,
+        /^Organisation$/i,
+        /^Collectivité$/i,
+        /^Secteur public$/i,
+      ];
+      
+      const navigationPatterns = [
+        /^Plus$/i,
+        /^Tout$/i,
+        /^À propos$/i,
+        /^Ami\(e\)s$/i,
+        /^Photos$/i,
+        /^Reels$/i,
+        /^Vidéos$/i,
+        /^À la une$/i,
+        /^Tous les ami/i,
+        /^Toutes les photos/i,
+        /^Confidentialité$/i,
+        /^Conditions générales$/i,
+        /^Publicités$/i,
+        /^Choix publicitaires$/i,
+        /^Cookies$/i,
+        /^Que voulez-vous dire/i,
+        /^Vidéo en direct$/i,
+        /^Photo\/Vidéo$/i,
+        /^Évènement marquant$/i,
+        /^Publications$/i,
+        /^Filtres$/i,
+        /^Gérer les publications$/i,
+        /^Vue Liste$/i,
+        /^Vue Grille$/i,
+        /^Facebook$/i,
+        /^Partagé avec/i,
+        /^J'aime$/i,
+        /^Commenter$/i,
+        /^Partager$/i,
+        /^Commenter en tant que/i,
+      ];
+      
+      const isNavigation = navigationPatterns.some(pattern => pattern.test(line));
+      if (isNavigation) {
+        console.log("Navigation/menu trouvé, fin de la bio:", line);
+        break;
+      }
+      
+      const isUIElement = uiPatterns.some(pattern => pattern.test(line));
+      
+      if (isUIElement) {
+        console.log("UI element ignoré:", line);
+        continue;
+      }
+      
+      if (line.length >= 3 && line.match(/[a-zA-ZÀ-ÿ0-9🌐🚀💼🔗@.]/)) {
+        bioLines.push(line);
+        console.log("Ligne de bio ajoutée:", line.substring(0, 80));
+      }
+    }
+    
+    if (bioLines.length > 0) {
+      const completeBio = bioLines.join('\n');
+      console.log("BIO FINALE:", completeBio);
+      return completeBio;
+    }
+  }
+  
+  console.log("Stats non trouvées avec le pattern, essai alternatif");
+  
+
+  const allDivs = mainDiv.querySelectorAll('div, span, p');
+  let candidates = [];
+  
+  for (const el of allDivs) {
+    const text = el.textContent?.trim() ?? '';
+    
+    if (text.length >= 15 && text.length <= 500) {
+      if (!text.match(/^(Tableau|Modifier|Promouvoir|Suivre|Message|Ajouter|Entreprise informatique)/) 
+          && text.match(/[a-zA-ZÀ-ÿ]{10,}/)
+          && text.includes(' ')
+          && !text.match(/^\d+\s+(followers?|suivi)/i)) {
+        candidates.push(text);
+      }
+    }
+  }
+  
+  for (const candidate of candidates) {
+    if (!candidate.match(/^(photo de couverture|changer|modifier|edit)/i)) {
+      console.log("BIO TROUVÉE (candidat):", candidate);
+      return candidate;
+    }
+  }
+  
+  console.log("Bio non trouvée");
+  return null;
+}
+
+function getFacebookUsername() {
+  const usernameSelectors = [
+    'h1',
+    'h2',
+    'div[data-testid="profile_name"] span',
+    'div[role="main"] h1',
+    'header h1',
+  ];
+
+  for (const selector of usernameSelectors) {
+    const el = document.querySelector(selector);
+    if (el) {
+      const text = el.textContent?.trim();
+      if (text && text.length > 0 && text.length < 100) {
+        return text;
+      }
+    }
+  }
+
+  const ogTitle = document.querySelector('meta[property="og:title"]');
+  if (ogTitle) {
+    return ogTitle.getAttribute('content')?.trim() ?? null;
+  }
+
+  return null;
+}
+
+function getFacebookStats() {
+  const stats = {
+    followers: null,
+    following: null,
+    postsCount: null,
+  };
+
+  const statElements = document.querySelectorAll('div[data-testid*="count"], a[href*="/friends"], a[href*="/followers"], a[href*="/following"], span');
+
+  for (const el of statElements) {
+    const text = el.textContent?.toLowerCase() ?? '';
+    const parentText = el.parentElement?.textContent?.toLowerCase() ?? '';
+    const fullText = (text + ' ' + parentText).toLowerCase();
+
+    if (fullText.includes('abonné') || fullText.includes('follower')) {
+      const match = el.textContent?.match(/\d+/);
+      if (match && !stats.followers) {
+        stats.followers = parseInt(match[0]);
+      }
+    }
+
+    if (fullText.includes('suivi') || fullText.includes('following')) {
+      const match = el.textContent?.match(/\d+/);
+      if (match && !stats.following) {
+        stats.following = parseInt(match[0]);
+      }
+    }
+
+    if (fullText.includes('publication') || fullText.includes('post')) {
+      const match = el.textContent?.match(/\d+/);
+      if (match && !stats.postsCount) {
+        stats.postsCount = parseInt(match[0]);
+      }
+    }
+  }
+
+  return stats;
+}
+
+function getFacebookPosts() {
+  const posts = [];
+  const seen = new Set();
+  let index = 1;
+
+  const postSelectors = [
+    'div[data-testid="post_container"]',
+    'div[role="article"]',
+    'div[data-testid="feed_story_container"]',
+    'article',
+    'div[data-pagelet*="feed"]',
+  ];
+
+  for (const selector of postSelectors) {
+    const postElements = document.querySelectorAll(selector);
+    if (postElements.length > 0) {
+      for (const postEl of postElements) {
+        const textEl = postEl.querySelector('div[data-testid="post_message"], span[data-testid="post_text"], div.userContent, span');
+        if (!textEl) continue;
+
+        const content = textEl.textContent?.trim();
+        if (!content || content.length < 2 || seen.has(content)) continue;
+
+        if (content.match(/^(j'aime|like|commenter|comment|partager|share)$/i)) continue;
+
+        let url = null;
+        const linkEl = /** @type {HTMLAnchorElement|null} */ (postEl.querySelector('a[href*="/posts/"], a[href*="/photo.php"], a[href*="/permalink.php"]'));
+        if (linkEl) {
+          url = linkEl.href;
+        } else {
+          const dataFeedId = postEl.getAttribute('data-ft');
+          if (dataFeedId) {
+            try {
+              const data = JSON.parse(dataFeedId);
+              if (data.content_owner_id) {
+                url = `https://www.facebook.com/permalink.php?story_fbid=${data.story_id}`;
+              }
+            } catch (e) {
+            }
+          }
+        }
+
+        seen.add(content);
+        posts.push({
+          content,
+          url,
+          index: index++,
+          type: 'post',
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      if (posts.length > 0) break;
+    }
+  }
+
+  return posts;
+}
+
+async function getFullFacebookProfileData() {
+  const { followers, following, postsCount } = getFacebookStats();
+
+  return {
+    platform: 'facebook',
+    bio: getFacebookBio(),
+    posts: getFacebookPosts(),
+    username: getFacebookUsername(),
+    followers,
+    following,
+    postsCount,
+    url: window.location.href,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+function waitForFacebookData(maxMs = 6000) {
+  return new Promise(resolve => {
+    const start = performance.now();
+
+    async function check() {
+      const data = await getFullFacebookProfileData();
       if (data.bio || data.posts.length > 0) {
         resolve(data);
         return;
