@@ -267,7 +267,249 @@ function cleanStoryTitle(title) {
     .trim();
 }
 
+function getFacebookBio() {
+  // ── Stratégie 1 : XPath exact (le plus précis, fragile si layout change)
+  try {
+    const xpathResult = document.evaluate(
+      '//*[@id="mount_0_0_rf"]/div/div[1]/div/div[3]/div/div/div[1]/div[1]/div/div/div[1]/div[2]/div/div/div/div[2]/div/div/div[2]/span',
+      document,
+      null,
+      XPathResult.FIRST_ORDERED_NODE_TYPE,
+      null
+    );
+    const bioEl = xpathResult.singleNodeValue;
+    const text = bioEl?.textContent?.trim();
+    if (text && text.length > 5 && text.length < 500) return text;
+  } catch (_) {}
 
+  // ── Stratégie 2 : CSS approximatif basé sur la structure XPath
+  // div[3] = 3ème enfant direct de la colonne principale
+  // On cible le mount root, on navigue vers la sidebar (div[3])
+  try {
+    const mount = document.getElementById('mount_0_0_rf');
+    if (mount) {
+      // Reconstitution CSS depuis le XPath
+      const sidebar = mount.querySelector(
+        ':scope > div > div:nth-child(1) > div > div:nth-child(3)'
+      );
+      if (sidebar) {
+        // Dans la sidebar, cibler les spans "orphelins" (bio = texte pur sans lien ni SVG)
+        const spans = sidebar.querySelectorAll('span');
+        for (const span of spans) {
+          if (
+            span.children.length === 0 &&          // texte pur
+            !span.closest('a') &&                   // pas dans un lien
+            !span.closest('[role="button"]') &&     // pas un bouton
+            span.textContent.trim().length > 10 &&
+            span.textContent.trim().length < 500
+          ) {
+            return span.textContent.trim();
+          }
+        }
+      }
+    }
+  } catch (_) {}
+
+  // ── Stratégie 3 : data-pagelet (fallback stable)
+  const pagelet = document.querySelector(
+    '[data-pagelet="ProfileAppSection_0"], [data-pagelet="ProfileTilesFeed_0"]'
+  );
+  if (pagelet) {
+    const spans = pagelet.querySelectorAll('span');
+    for (const span of spans) {
+      const text = span.textContent?.trim();
+      if (
+        span.children.length === 0 &&
+        !span.closest('a') &&
+        !span.closest('[role="button"]') &&
+        text?.length > 10 &&
+        text?.length < 500
+      ) {
+        return text;
+      }
+    }
+  }
+
+  // ── Stratégie 4 : JSON GraphQL injecté par Facebook
+  try {
+    const scripts = document.querySelectorAll('script[type="application/json"]');
+    for (const script of scripts) {
+      const raw = script.textContent ?? '';
+      if (raw.includes('"biography"') || raw.includes('"bio"')) {
+        const json = JSON.parse(raw);
+        const bio = extractDeep(json, 'biography') ?? extractDeep(json, 'bio');
+        if (bio && bio.length > 5 && bio.length < 500) return bio;
+      }
+    }
+  } catch (_) {}
+
+  // ── Stratégie 5 : og:description (bio tronquée)
+  const meta =
+    document.querySelector('meta[property="og:description"]') ??
+    document.querySelector('meta[name="description"]');
+  const metaText = meta?.getAttribute('content')?.trim();
+  if (metaText && metaText.length > 10) return metaText;
+
+  return null;
+}
+
+function extractDeep(obj, key, depth = 0) {
+  if (depth > 12 || !obj || typeof obj !== 'object') return null;
+  if (typeof obj[key] === 'string' && obj[key].length > 0) return obj[key];
+  for (const v of Object.values(obj)) {
+    const found = extractDeep(v, key, depth + 1);
+    if (found) return found;
+  }
+  return null;
+}
+
+function getFacebookPosts() {
+  const posts = [];
+  const seen = new Set();
+  let index = 1;
+
+  const postSelectors = [
+    '[data-testid="feed_story_container"]',
+    '[role="article"]',
+    'div[data-testid^="post"]',
+    '.x1yztbdb > div > div',
+  ];
+
+  const postElements = [];
+  for (const selector of postSelectors) {
+    postElements.push(...document.querySelectorAll(selector));
+  }
+
+  const uniquePosts = [...new Set(postElements)];
+
+  for (const article of uniquePosts) {
+    const articleEl = /** @type {HTMLElement|null} */ (article);
+    if (!articleEl) continue;
+
+    const textSelectors = [
+      '[data-testid="post_message"]',
+      'div[data-testid*="post"] span',
+      'div[role="presentation"] > span',
+      '.xdj266r > span'
+    ];
+
+    let textContent = '';
+    for (const selector of textSelectors) {
+      const textEl = /** @type {HTMLElement|null} */ (articleEl.querySelector(selector));
+      if (textEl) {
+        textContent = textEl.innerText?.trim() ?? '';
+        if (textContent) break;
+      }
+    }
+    
+    if (!textContent || textContent.length < 2 || seen.has(textContent)) continue;
+
+    let url = null;
+    const link = /** @type {HTMLAnchorElement|null} */ (articleEl.querySelector('a[href*="/posts/"], a[href*="/photo.php"], a[href*="/watch/"], a[href*="/reel/"]'));
+    if (link) url = link.href;
+
+    seen.add(textContent);
+    posts.push({
+      content: textContent,
+      url,
+      index: index++,
+      type: 'post'
+    });
+
+    if (posts.length >= 30) break;
+  }
+
+  return posts;
+}
+
+function getFacebookUsername() {
+  const userNameSelectors = [
+    '[data-testid="profile_name_header"]',
+    'h1',
+    '[role="banner"] h1',
+    '[data-testid="profile"] h1',
+  ];
+
+  for (const selector of userNameSelectors) {
+    const userNameEl = /** @type {HTMLElement|null} */ (document.querySelector(selector));
+    if (userNameEl) {
+      const text = userNameEl.innerText?.trim();
+      if (text && text.length > 0 && text.length < 100) return text;
+    }
+  }
+
+  const ogProfile = document.querySelector('meta[property="og:title"]');
+  if (ogProfile) {
+    const title = ogProfile.getAttribute('content');
+    if (title) return title.trim();
+  }
+
+  return null;
+}
+
+function getFacebookStats() {
+  const stats = { followers: null, following: null };
+
+  const statLinks = [
+    ...document.querySelectorAll('a[href*="/followers/"]'),
+    ...document.querySelectorAll('a[href*="/friends"]'),
+    ...document.querySelectorAll('[data-testid="profile_stats"] a'),
+  ];
+  
+  for (const link of statLinks) {
+    const linkEl = /** @type {HTMLElement} */ (link);
+    const text = linkEl.textContent?.toLowerCase() || '';
+    const match = text.match(/([\d,KMB.]+)\s*(followers?|amis|friends|suiveurs)/i);
+    
+    if (match) {
+      const number = match[1];
+      if (text.includes('follow') || text.includes('suiveur')) {
+        stats.followers = number;
+      } else if (text.includes('friend') || text.includes('ami')) {
+        stats.following = number;
+      }
+    }
+  }
+
+  return stats;
+}
+
+async function getFullFacebookProfileData() {
+  const { followers, following } = getFacebookStats();
+  return {
+    platform: 'facebook',
+    bio: getFacebookBio(),
+    posts: getFacebookPosts(),
+    stories: [],
+    username: getFacebookUsername(),
+    followers,
+    following,
+    postsCount: null,
+    url: window.location.href,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+function waitForFacebookData(maxMs = 6000) {
+  return new Promise(resolve => {
+    const start = performance.now();
+
+    async function check() {
+      const data = await getFullFacebookProfileData();
+      if (data.bio || data.posts.length > 0) {
+        resolve(data);
+        return;
+      }
+      if (performance.now() - start > maxMs) {
+        resolve(data);
+        return;
+      }
+      requestAnimationFrame(check);
+    }
+
+    check();
+  });
+}
 
 function getXBio() {
   const descEl = /** @type {HTMLElement|null} */ (document.querySelector('[data-testid="UserDescription"]'));
