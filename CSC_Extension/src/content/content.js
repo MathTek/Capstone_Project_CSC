@@ -424,21 +424,16 @@ function getFacebookBio() {
 
   
   const allText = mainDiv.innerText;
-  console.log("Texte complet trouvé:");
-  console.log(allText.substring(0, 300));
   
 
   const statsPattern = /(\d+\s+(followers?|ami|suivi|amis|friends|following))\s*(•|\s)?(\d+\s+(followers?|ami|suivi|amis|friends|following))?/i;
   let statsMatch = allText.match(statsPattern);
   
   if (statsMatch) {
-    console.log("Stats trouvées:", statsMatch[0]);
-    
     const statsStartIndex = allText.indexOf(statsMatch[0]);
     const statsEndIndex = statsStartIndex + statsMatch[0].length;
     
     const textAfterStats = allText.substring(statsEndIndex).trim();
-    console.log("Texte après stats (300 chars):", textAfterStats.substring(0, 300));
     
     const lines = textAfterStats.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     
@@ -501,31 +496,26 @@ function getFacebookBio() {
       
       const isNavigation = navigationPatterns.some(pattern => pattern.test(line));
       if (isNavigation) {
-        console.log("Navigation/menu trouvé, fin de la bio:", line);
         break;
       }
       
       const isUIElement = uiPatterns.some(pattern => pattern.test(line));
       
       if (isUIElement) {
-        console.log("UI element ignoré:", line);
         continue;
       }
       
       if (line.length >= 3 && line.match(/[a-zA-ZÀ-ÿ0-9🌐🚀💼🔗@.]/)) {
         bioLines.push(line);
-        console.log("Ligne de bio ajoutée:", line.substring(0, 80));
       }
     }
     
     if (bioLines.length > 0) {
       const completeBio = bioLines.join('\n');
-      console.log("BIO FINALE:", completeBio);
       return completeBio;
     }
   }
   
-  console.log("Stats non trouvées avec le pattern, essai alternatif");
   
 
   const allDivs = mainDiv.querySelectorAll('div, span, p');
@@ -546,12 +536,10 @@ function getFacebookBio() {
   
   for (const candidate of candidates) {
     if (!candidate.match(/^(photo de couverture|changer|modifier|edit)/i)) {
-      console.log("BIO TROUVÉE (candidat):", candidate);
       return candidate;
     }
   }
   
-  console.log("Bio non trouvée");
   return null;
 }
 
@@ -626,57 +614,127 @@ function getFacebookPosts() {
   const seen = new Set();
   let index = 1;
 
-  const postSelectors = [
-    'div[data-testid="post_container"]',
-    'div[role="article"]',
-    'div[data-testid="feed_story_container"]',
-    'article',
-    'div[data-pagelet*="feed"]',
-  ];
+  const mainDiv = /** @type {HTMLElement|null} */ (document.querySelector('div[role="main"]'));
+  if (!mainDiv) {
+    return posts;
+  }
 
-  for (const selector of postSelectors) {
-    const postElements = document.querySelectorAll(selector);
-    if (postElements.length > 0) {
-      for (const postEl of postElements) {
-        const textEl = postEl.querySelector('div[data-testid="post_message"], span[data-testid="post_text"], div.userContent, span');
-        if (!textEl) continue;
-
-        const content = textEl.textContent?.trim();
-        if (!content || content.length < 2 || seen.has(content)) continue;
-
-        if (content.match(/^(j'aime|like|commenter|comment|partager|share)$/i)) continue;
-
-        let url = null;
-        const linkEl = /** @type {HTMLAnchorElement|null} */ (postEl.querySelector('a[href*="/posts/"], a[href*="/photo.php"], a[href*="/permalink.php"]'));
-        if (linkEl) {
-          url = linkEl.href;
-        } else {
-          const dataFeedId = postEl.getAttribute('data-ft');
-          if (dataFeedId) {
-            try {
-              const data = JSON.parse(dataFeedId);
-              if (data.content_owner_id) {
-                url = `https://www.facebook.com/permalink.php?story_fbid=${data.story_id}`;
-              }
-            } catch (e) {
-            }
-          }
+  const allText = mainDiv.innerText;
+  
+  const lines = allText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  
+  let publicationsSectionStart = -1;
+  
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].match(/^Publications$/i)) {
+      publicationsSectionStart = i;
+      break;
+    }
+  }
+  
+  const processLines = publicationsSectionStart !== -1 ? lines.slice(publicationsSectionStart + 1) : lines;
+  
+  let currentPost = null;
+  
+  for (let i = 0; i < processLines.length; i++) {
+    const line = processLines[i];
+    
+    const buttonPatterns = [
+      /^Filtres$/i,
+      /^Gérer les publications$/i,
+      /^Vue Liste$/i,
+      /^Vue Grille$/i,
+      /^Ajouter des éléments à la une$/i,
+    ];
+    
+    const isButton = buttonPatterns.some(pattern => pattern.test(line));
+    if (isButton) {
+      continue;
+    }
+    
+    const endSectionPatterns = [
+      /^Confidentialité$/i,
+      /^Conditions générales$/i,
+      /^À propos$/i,
+      /^Ami\(e\)s$/i,
+      /^Photos$/i,
+      /^Reels$/i,
+      /^Vidéos$/i,
+      /^Que voulez-vous dire/i,
+    ];
+    
+    const isEndSection = endSectionPatterns.some(pattern => pattern.test(line));
+    if (isEndSection) {
+      if (currentPost && currentPost.content && currentPost.content.length >= 3) {
+        if (!seen.has(currentPost.content)) {
+          seen.add(currentPost.content);
+          posts.push(currentPost);
         }
-
-        seen.add(content);
-        posts.push({
-          content,
-          url,
-          index: index++,
+      }
+      break;
+    }
+    
+    const actionPatterns = [
+      /^J'aime$/i,
+      /^Commenter$/i,
+      /^Partager$/i,
+      /^Commenter en tant que/i,
+      /^Partagé avec\s*:/i,
+      /^Plus$/i,
+    ];
+    
+    const isAction = actionPatterns.some(pattern => pattern.test(line));
+    if (isAction) {
+      if (currentPost && currentPost.content && currentPost.content.length >= 3) {
+        if (!seen.has(currentPost.content)) {
+          seen.add(currentPost.content);
+          posts.push(currentPost);
+          index++;
+        }
+      }
+      currentPost = null;
+      continue;
+    }
+    
+    if (line.match(/^(Tout|À la une|Ajouter)/i)) {
+      if (currentPost && currentPost.content && currentPost.content.length >= 3) {
+        if (!seen.has(currentPost.content)) {
+          seen.add(currentPost.content);
+          posts.push(currentPost);
+          index++;
+        }
+      }
+      currentPost = null;
+      continue;
+    }
+    
+    if (line === 'Facebook') {
+      continue;
+    }
+    
+    if (line.length >= 3 && line.match(/[a-zA-ZÀ-ÿ0-9@.\-éèê]/)) {
+      if (!currentPost) {
+        currentPost = {
+          content: line,
+          url: null,
+          index: index,
           type: 'post',
           timestamp: new Date().toISOString(),
-        });
+        };
+      } else {
+        currentPost.content += '\n' + line;
       }
-
-      if (posts.length > 0) break;
+    }
+  }
+  
+  if (currentPost && currentPost.content && currentPost.content.length >= 3) {
+    if (!seen.has(currentPost.content)) {
+      seen.add(currentPost.content);
+      posts.push(currentPost);
     }
   }
 
+  console.log("Posts trouvés:", posts);
   return posts;
 }
 
