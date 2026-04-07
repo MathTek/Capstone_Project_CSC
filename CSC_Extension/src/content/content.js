@@ -368,56 +368,254 @@ function getFacebookPosts() {
   const seen = new Set();
   let index = 1;
 
-  const postSelectors = [
-    '[data-testid="feed_story_container"]',
-    '[role="article"]',
-    'div[data-testid^="post"]',
-    '.x1yztbdb > div > div',
-  ];
-
-  const postElements = [];
-  for (const selector of postSelectors) {
-    postElements.push(...document.querySelectorAll(selector));
+  // ── Afficher la structure pour debugging
+  function debugStructure() {
+    try {
+      const result = document.evaluate(
+        '//*[@id="mount_0_0_rf"]/div/div[1]/div/div[3]/div/div/div[1]/div[1]/div/div/div[4]/div[2]/div/div[2]/div[3]',
+        document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
+      );
+      const container = /** @type {HTMLElement|null} */ (result.singleNodeValue);
+      if (container) {
+        console.log('=== Facebook Posts Feed Structure ===');
+        console.log(`Container children: ${container.children.length}`);
+        for (let i = 0; i < Math.min(5, container.children.length); i++) {
+          const child = /** @type {HTMLElement} */ (container.children[i]);
+          console.log(`Child ${i}:`, {
+            tagName: child.tagName,
+            className: child.className,
+            childCount: child.children.length,
+            textLength: child.innerText?.length || 0,
+            hasImage: !!child.querySelector('img[src*="scontent"]'),
+            hasVideo: !!child.querySelector('video'),
+            hasLink: !!child.querySelector('a[href*="/posts/"]'),
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Debug error:', e);
+    }
   }
 
-  const uniquePosts = [...new Set(postElements)];
+  // ── Localiser le conteneur feed via le XPath connu
+  function getFeedContainerWithPosts() {
+    // XPath PRÉCIS qui cible le conteneur parent de la liste des posts
+    try {
+      const result = document.evaluate(
+        '//*[@id="mount_0_0_rf"]/div/div[1]/div/div[3]/div/div/div[1]/div[1]/div/div/div[4]/div[2]/div/div[2]/div[3]',
+        document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
+      );
+      if (result.singleNodeValue) {
+        return { type: 'container', result: result.singleNodeValue };
+      }
+    } catch (_) {}
 
-  for (const article of uniquePosts) {
-    const articleEl = /** @type {HTMLElement|null} */ (article);
-    if (!articleEl) continue;
+    // Variante CSS du XPath précis
+    try {
+      const mount = document.getElementById('mount_0_0_rf');
+      if (mount) {
+        const feed = mount.querySelector(
+          ':scope > div > div:nth-child(1) > div > div:nth-child(3) > div > div > div:nth-child(1) > div:nth-child(1) > div > div > div:nth-child(4) > div:nth-child(2) > div > div:nth-child(2) > div:nth-child(3)'
+        );
+        if (feed) return { type: 'container', result: feed };
+      }
+    } catch (_) {}
 
-    const textSelectors = [
-      '[data-testid="post_message"]',
-      'div[data-testid*="post"] span',
-      'div[role="presentation"] > span',
-      '.xdj266r > span'
-    ];
+    // XPath fallback ancien pour le conteneur principal
+    try {
+      const result = document.evaluate(
+        '//*[@id="mount_0_0_rf"]/div/div[1]/div/div[3]/div/div/div[1]/div[1]/div/div/div[4]/div[2]/div/div[2]',
+        document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
+      );
+      if (result.singleNodeValue) {
+        return { type: 'container', result: result.singleNodeValue };
+      }
+    } catch (_) {}
 
-    let textContent = '';
-    for (const selector of textSelectors) {
-      const textEl = /** @type {HTMLElement|null} */ (articleEl.querySelector(selector));
-      if (textEl) {
-        textContent = textEl.innerText?.trim() ?? '';
-        if (textContent) break;
+    // Fallback CSS depuis le mount root
+    const mount = document.getElementById('mount_0_0_rf');
+    if (mount) {
+      const feed = mount.querySelector(
+        ':scope > div > div:nth-child(1) > div > div:nth-child(3) > div > div > div:nth-child(1) > div:nth-child(1) > div > div > div:nth-child(4) > div:nth-child(2) > div > div:nth-child(2)'
+      );
+      if (feed) return { type: 'container', result: feed };
+    }
+
+    // Fallback data-pagelet
+    const pagelet = (
+      document.querySelector('[data-pagelet="ProfileTimeline"]') ??
+      document.querySelector('[data-pagelet="ProfileSyncedPosts"]') ??
+      document.querySelector('[role="main"]')
+    );
+    if (pagelet) return { type: 'container', result: pagelet };
+
+    return { type: 'none', result: null };
+  }
+
+  // ── Extraire le texte d'un article
+  function extractText(article) {
+    // 1. data-testid legacy
+    const legacy = article.querySelector('[data-testid="post_message"]');
+    if (legacy?.innerText?.trim()) return legacy.innerText.trim();
+
+    // 2. div avec attribut "dir" = conteneur de texte de post FB
+    const dirDivs = article.querySelectorAll('div[dir="auto"]');
+    let best = '';
+    for (const div of dirDivs) {
+      // Exclure les divs qui contiennent d'autres divs[dir] (conteneurs parents)
+      if (div.querySelector('div[dir="auto"]')) continue;
+      const text = div.innerText?.trim() ?? '';
+      if (text.length > best.length) best = text;
+    }
+    if (best.length > 2) return best;
+
+    // 3. Spans directs sans enfants dans l'article
+    for (const span of article.querySelectorAll('span')) {
+      if (span.children.length === 0 && !span.closest('a')) {
+        const text = span.innerText?.trim() ?? '';
+        if (text.length > 20) return text;
       }
     }
-    
-    if (!textContent || textContent.length < 2 || seen.has(textContent)) continue;
 
-    let url = null;
-    const link = /** @type {HTMLAnchorElement|null} */ (articleEl.querySelector('a[href*="/posts/"], a[href*="/photo.php"], a[href*="/watch/"], a[href*="/reel/"]'));
-    if (link) url = link.href;
-
-    seen.add(textContent);
-    posts.push({
-      content: textContent,
-      url,
-      index: index++,
-      type: 'post'
-    });
-
-    if (posts.length >= 30) break;
+    return '';
   }
+
+  // ── Extraire l'URL du post
+  function extractUrl(article) {
+    const patterns = [
+      'a[href*="/posts/"]',
+      'a[href*="/photo.php"]',
+      'a[href*="/watch/"]',
+      'a[href*="/reel/"]',
+      'a[href*="/videos/"]',
+      'a[href*="story_fbid"]',
+      'a[href*="/permalink/"]',
+    ];
+    for (const pattern of patterns) {
+      const link = /** @type {HTMLAnchorElement|null} */ (article.querySelector(pattern));
+      if (link?.href) return link.href;
+    }
+    return null;
+  }
+
+  // ── Extraire le timestamp
+  function extractTimestamp(article) {
+    const timeEl = article.querySelector('abbr[data-utime], time[datetime], abbr[title]');
+    if (!timeEl) return null;
+    return (
+      timeEl.getAttribute('datetime') ??
+      timeEl.getAttribute('data-utime') ??
+      timeEl.getAttribute('title') ??
+      timeEl.innerText?.trim() ??
+      null
+    );
+  }
+
+  // ── Détecter le type de post
+  function detectType(article) {
+    if (article.querySelector('video, [data-testid="video-container"]')) return 'video';
+    if (article.querySelector('a[href*="/reel/"]')) return 'reel';
+    if (article.querySelector('img[src*="scontent"]')) return 'photo';
+    if (article.querySelector('a[href*="/watch/"]')) return 'watch';
+    return 'post';
+  }
+
+  // ── Vérifier si un élément est réellement un post
+  function isRealPost(element) {
+    if (!element || !element.tagName) return false;
+    
+    // Vérifier s'il contient des contenus typiques d'un post
+    const hasText = element.innerText && element.innerText.trim().length > 0;
+    const hasImage = !!element.querySelector('img[src*="scontent"]');
+    const hasVideo = !!element.querySelector('video, [data-testid="video-container"]');
+    const hasLink = !!element.querySelector('a[href*="/posts/"], a[href*="/photo.php"], a[href*="/watch/"], a[href*="/reel/"], a[href*="/videos/"]');
+    const hasTimeElement = !!element.querySelector('abbr[data-utime], time[datetime], abbr[title]');
+    
+    // Un post doit avoir au minimum une de ces caractéristiques
+    return hasText || hasImage || hasVideo || hasLink || hasTimeElement;
+  }
+
+  // ── Main
+  debugStructure(); // Afficher la structure pour debug
+  
+  const feedData = getFeedContainerWithPosts();
+  
+  if (feedData.type === 'container') {
+    // Si c'est un élément DOM, utiliser la méthode classique
+    const feedResult = /** @type {HTMLElement} */ (feedData.result);
+    
+    console.log(`Feed container found with ${feedResult.children.length} direct children`);
+    
+    // Stratégie 1 : parcourir tous les enfants directs
+    let candidates = [...feedResult.children].filter(el => isRealPost(el));
+    
+    console.log(`Strategy 1 (direct children): found ${candidates.length} posts`);
+    
+    // Stratégie 2 : si trop peu de résultats, explorer plus profondément
+    if (candidates.length < 3) {
+      console.log('Strategy 2: Exploring deeper levels...');
+      candidates = [];
+      
+      // Chercher les articles ou les divs qui contiennent du contenu
+      const potentialPosts = feedResult.querySelectorAll('[role="article"], div');
+      const foundPostElements = new Set();
+      
+      for (const element of potentialPosts) {
+        const el = /** @type {HTMLElement} */ (element);
+        
+        // Éviter les doublons (enfants du même post)
+        let isChild = false;
+        for (const found of foundPostElements) {
+          if (found.contains(el)) {
+            isChild = true;
+            break;
+          }
+        }
+        if (isChild) continue;
+        
+        if (isRealPost(el)) {
+          foundPostElements.add(el);
+          candidates.push(el);
+        }
+      }
+      
+      console.log(`Strategy 2: found ${candidates.length} posts`);
+    }
+
+    console.log(`Total candidates: ${candidates.length}`);
+
+    for (const article of candidates) {
+      const articleEl = /** @type {HTMLElement} */ (article);
+
+      const textContent = extractText(articleEl);
+      const url = extractUrl(articleEl);
+      const timestamp = extractTimestamp(articleEl);
+      const type = detectType(articleEl);
+
+      // Vérifier que c'est réellement un post avec du contenu
+      if (!isRealPost(articleEl)) continue;
+      
+      // Éviter les doublons basés sur le texte
+      if (textContent && seen.has(textContent)) continue;
+
+      if (textContent) seen.add(textContent);
+      
+      console.log(`Adding post ${index}: ${textContent?.substring(0, 50) || '(no text)'}`);
+      
+      posts.push({
+        index: index++,
+        content: textContent || '(No caption)',
+        url,
+        timestamp,
+        type,
+      });
+
+      if (posts.length >= 30) break;
+    }
+  }
+
+  console.log(`Extracted ${posts.length} posts from Facebook profile.`);
+  console.log(posts);
 
   return posts;
 }
