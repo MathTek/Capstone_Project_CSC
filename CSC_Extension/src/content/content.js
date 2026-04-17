@@ -411,6 +411,370 @@ function waitForXData(maxMs = 6000) {
   });
 }
 
+function getFacebookBio() {
+ 
+  
+  
+  const mainDiv = /** @type {HTMLElement|null} */ (document.querySelector('div[role="main"]'));
+  if (!mainDiv) {
+    console.log("main div not found");
+    return null;
+  }
+
+
+  
+  const allText = mainDiv.innerText;
+  
+
+  const statsPattern = /(\d+\s+(followers?|ami|suivi|amis|friends|following))\s*(•|\s)?(\d+\s+(followers?|ami|suivi|amis|friends|following))?/i;
+  let statsMatch = allText.match(statsPattern);
+  
+  if (statsMatch) {
+    const statsStartIndex = allText.indexOf(statsMatch[0]);
+    const statsEndIndex = statsStartIndex + statsMatch[0].length;
+    
+    const textAfterStats = allText.substring(statsEndIndex).trim();
+    
+    const lines = textAfterStats.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    
+    let bioLines = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      const uiPatterns = [
+        /^Ajouter à la story$/i,
+        /^Ajouter à la liste$/i,
+        /^Modifier le profil$/i,
+        /^Modifier$/i,
+        /^Promouvoir$/i,
+        /^Tableau de bord professionnel$/i,
+        /^Ajouter un bouton d'appel à l'action$/i,
+        /^Suivre$/i,
+        /^Follow$/i,
+        /^Message$/i,
+        /^Patreon$/i,
+        /^Entreprise informatique$/i,
+        /^Entreprise$/i,
+        /^Organisation$/i,
+        /^Collectivité$/i,
+        /^Secteur public$/i,
+      ];
+      
+      const navigationPatterns = [
+        /^Plus$/i,
+        /^Tout$/i,
+        /^À propos$/i,
+        /^Ami\(e\)s$/i,
+        /^Photos$/i,
+        /^Reels$/i,
+        /^Vidéos$/i,
+        /^À la une$/i,
+        /^Tous les ami/i,
+        /^Toutes les photos/i,
+        /^Confidentialité$/i,
+        /^Conditions générales$/i,
+        /^Publicités$/i,
+        /^Choix publicitaires$/i,
+        /^Cookies$/i,
+        /^Que voulez-vous dire/i,
+        /^Vidéo en direct$/i,
+        /^Photo\/Vidéo$/i,
+        /^Évènement marquant$/i,
+        /^Publications$/i,
+        /^Filtres$/i,
+        /^Gérer les publications$/i,
+        /^Vue Liste$/i,
+        /^Vue Grille$/i,
+        /^Facebook$/i,
+        /^Partagé avec/i,
+        /^J'aime$/i,
+        /^Commenter$/i,
+        /^Partager$/i,
+        /^Commenter en tant que/i,
+      ];
+      
+      const isNavigation = navigationPatterns.some(pattern => pattern.test(line));
+      if (isNavigation) {
+        break;
+      }
+      
+      const isUIElement = uiPatterns.some(pattern => pattern.test(line));
+      
+      if (isUIElement) {
+        continue;
+      }
+      
+      if (line.length >= 3 && line.match(/[a-zA-ZÀ-ÿ0-9🌐🚀💼🔗@.]/)) {
+        bioLines.push(line);
+      }
+    }
+    
+    if (bioLines.length > 0) {
+      const completeBio = bioLines.join('\n');
+      return completeBio;
+    }
+  }
+  
+  
+
+  const allDivs = mainDiv.querySelectorAll('div, span, p');
+  let candidates = [];
+  
+  for (const el of allDivs) {
+    const text = el.textContent?.trim() ?? '';
+    
+    if (text.length >= 15 && text.length <= 500) {
+      if (!text.match(/^(Tableau|Modifier|Promouvoir|Suivre|Message|Ajouter|Entreprise informatique)/) 
+          && text.match(/[a-zA-ZÀ-ÿ]{10,}/)
+          && text.includes(' ')
+          && !text.match(/^\d+\s+(followers?|suivi)/i)) {
+        candidates.push(text);
+      }
+    }
+  }
+  
+  for (const candidate of candidates) {
+    if (!candidate.match(/^(photo de couverture|changer|modifier|edit)/i)) {
+      return candidate;
+    }
+  }
+  
+  return null;
+}
+
+function getFacebookUsername() {
+  const usernameSelectors = [
+    'h1',
+    'h2',
+    'div[data-testid="profile_name"] span',
+    'div[role="main"] h1',
+    'header h1',
+  ];
+
+  for (const selector of usernameSelectors) {
+    const el = document.querySelector(selector);
+    if (el) {
+      const text = el.textContent?.trim();
+      if (text && text.length > 0 && text.length < 100) {
+        return text;
+      }
+    }
+  }
+
+  const ogTitle = document.querySelector('meta[property="og:title"]');
+  if (ogTitle) {
+    return ogTitle.getAttribute('content')?.trim() ?? null;
+  }
+
+  return null;
+}
+
+function getFacebookStats() {
+  const stats = {
+    followers: null,
+    following: null,
+    postsCount: null,
+  };
+
+  const statElements = document.querySelectorAll('div[data-testid*="count"], a[href*="/friends"], a[href*="/followers"], a[href*="/following"], span');
+
+  for (const el of statElements) {
+    const text = el.textContent?.toLowerCase() ?? '';
+    const parentText = el.parentElement?.textContent?.toLowerCase() ?? '';
+    const fullText = (text + ' ' + parentText).toLowerCase();
+
+    if (fullText.includes('abonné') || fullText.includes('follower')) {
+      const match = el.textContent?.match(/\d+/);
+      if (match && !stats.followers) {
+        stats.followers = parseInt(match[0]);
+      }
+    }
+
+    if (fullText.includes('suivi') || fullText.includes('following')) {
+      const match = el.textContent?.match(/\d+/);
+      if (match && !stats.following) {
+        stats.following = parseInt(match[0]);
+      }
+    }
+
+    if (fullText.includes('publication') || fullText.includes('post')) {
+      const match = el.textContent?.match(/\d+/);
+      if (match && !stats.postsCount) {
+        stats.postsCount = parseInt(match[0]);
+      }
+    }
+  }
+
+  return stats;
+}
+
+function getFacebookPosts() {
+  const posts = [];
+  const seen = new Set();
+  let index = 1;
+
+  const mainDiv = /** @type {HTMLElement|null} */ (document.querySelector('div[role="main"]'));
+  if (!mainDiv) {
+    return posts;
+  }
+
+  const allText = mainDiv.innerText;
+  
+  const lines = allText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  
+  let publicationsSectionStart = -1;
+  
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].match(/^Publications$/i)) {
+      publicationsSectionStart = i;
+      break;
+    }
+  }
+  
+  const processLines = publicationsSectionStart !== -1 ? lines.slice(publicationsSectionStart + 1) : lines;
+  
+  let currentPost = null;
+  
+  for (let i = 0; i < processLines.length; i++) {
+    const line = processLines[i];
+    
+    const buttonPatterns = [
+      /^Filtres$/i,
+      /^Gérer les publications$/i,
+      /^Vue Liste$/i,
+      /^Vue Grille$/i,
+      /^Ajouter des éléments à la une$/i,
+    ];
+    
+    const isButton = buttonPatterns.some(pattern => pattern.test(line));
+    if (isButton) {
+      continue;
+    }
+    
+    const endSectionPatterns = [
+      /^Confidentialité$/i,
+      /^Conditions générales$/i,
+      /^À propos$/i,
+      /^Ami\(e\)s$/i,
+      /^Photos$/i,
+      /^Reels$/i,
+      /^Vidéos$/i,
+      /^Que voulez-vous dire/i,
+    ];
+    
+    const isEndSection = endSectionPatterns.some(pattern => pattern.test(line));
+    if (isEndSection) {
+      if (currentPost && currentPost.content && currentPost.content.length >= 3) {
+        if (!seen.has(currentPost.content)) {
+          seen.add(currentPost.content);
+          posts.push(currentPost);
+        }
+      }
+      break;
+    }
+    
+    const actionPatterns = [
+      /^J'aime$/i,
+      /^Commenter$/i,
+      /^Partager$/i,
+      /^Commenter en tant que/i,
+      /^Partagé avec\s*:/i,
+      /^Plus$/i,
+    ];
+    
+    const isAction = actionPatterns.some(pattern => pattern.test(line));
+    if (isAction) {
+      if (currentPost && currentPost.content && currentPost.content.length >= 3) {
+        if (!seen.has(currentPost.content)) {
+          seen.add(currentPost.content);
+          posts.push(currentPost);
+          index++;
+        }
+      }
+      currentPost = null;
+      continue;
+    }
+    
+    if (line.match(/^(Tout|À la une|Ajouter)/i)) {
+      if (currentPost && currentPost.content && currentPost.content.length >= 3) {
+        if (!seen.has(currentPost.content)) {
+          seen.add(currentPost.content);
+          posts.push(currentPost);
+          index++;
+        }
+      }
+      currentPost = null;
+      continue;
+    }
+    
+    if (line === 'Facebook') {
+      continue;
+    }
+    
+    if (line.length >= 3 && line.match(/[a-zA-ZÀ-ÿ0-9@.\-éèê]/)) {
+      if (!currentPost) {
+        currentPost = {
+          content: line,
+          url: null,
+          index: index,
+          type: 'post',
+          timestamp: new Date().toISOString(),
+        };
+      } else {
+        currentPost.content += '\n' + line;
+      }
+    }
+  }
+  
+  if (currentPost && currentPost.content && currentPost.content.length >= 3) {
+    if (!seen.has(currentPost.content)) {
+      seen.add(currentPost.content);
+      posts.push(currentPost);
+    }
+  }
+
+  console.log("Posts trouvés:", posts);
+  return posts;
+}
+
+async function getFullFacebookProfileData() {
+  const { followers, following, postsCount } = getFacebookStats();
+
+  return {
+    platform: 'facebook',
+    bio: getFacebookBio(),
+    posts: getFacebookPosts(),
+    username: getFacebookUsername(),
+    followers,
+    following,
+    postsCount,
+    url: window.location.href,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+function waitForFacebookData(maxMs = 6000) {
+  return new Promise(resolve => {
+    const start = performance.now();
+
+    async function check() {
+      const data = await getFullFacebookProfileData();
+      if (data.bio || data.posts.length > 0) {
+        resolve(data);
+        return;
+      }
+      if (performance.now() - start > maxMs) {
+        resolve(data);
+        return;
+      }
+      requestAnimationFrame(check);
+    }
+
+    check();
+  });
+}
+
 const browserAPI = (typeof globalThis !== 'undefined' && (globalThis.browser || globalThis.chrome)) || undefined;
 
 if (browserAPI && browserAPI.runtime) {

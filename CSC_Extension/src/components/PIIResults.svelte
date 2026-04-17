@@ -85,7 +85,6 @@
                           </div>
                           <div class="text-xs text-slate-400 mt-1 flex items-center gap-2">
                             <span class="inline-block px-2 py-0.5 rounded text-xs bg-slate-800/50 border border-slate-700 text-cyan-300">{item.source}</span>
-                            <span class="inline-block">Position: <span class="font-medium text-slate-200">{i}</span></span>
                           </div>
                         </div>
 

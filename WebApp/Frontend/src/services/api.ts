@@ -329,3 +329,4 @@ export async function fetchWs(token: string | null, userId: number): Promise<Web
   sendMessage(`test ${userId}`);
   return ws;
 }
+

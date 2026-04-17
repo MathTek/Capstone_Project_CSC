@@ -26,6 +26,9 @@ async def create_family_member(payload: FamilyPoolCreate, db: Session = Depends(
     member = db.query(User).filter(User.username == payload.member_username).first()
     if not member:
         raise HTTPException(status_code=404, detail="Member user not found")
+    
+    if db.query(FamilyPool).filter(member.id == FamilyPool.member_id).first():
+        raise HTTPException(status_code=400, detail="User is already a family member")
 
     new_entry = FamilyPool(
         chief_id=payload.chief_id,
