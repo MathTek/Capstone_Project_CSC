@@ -24,7 +24,7 @@
       "run_at": "document_idle"
     }
   ],
-  "permissions": ["storage", "tabs", "scripting"],
+  "permissions": ["storage", "tabs", "scripting", "cookies", "webRequest"],
   "host_permissions": [
     "http://localhost:8000/*",
     "https://www.instagram.com/*",

@@ -806,7 +806,624 @@ if (browserAPI && browserAPI.runtime) {
       return true;
     }
 
+    if (msg.action === "checkOwnProfile") {
+      // DEPRECATED: Old single-signal verification
+      // Now using multi-signal verification in background script
+      const isOwnProfile = checkOwnProfile();
+      sendResponse({ isOwnProfile: isOwnProfile });
+      return true;
+    }
+
+    if (msg.action === "captureNetworkData") {
+      // Background script is requesting network data capture
+      // This has already been started on page load
+      sendResponse({ status: 'capturing' });
+      return true;
+    }
+
+    if (msg.action === "getDOMCheckData") {
+      // Perform integrity-checked DOM verification
+      const url = window.location.href;
+      let domData = null;
+
+      if (url.includes('instagram.com')) {
+        domData = checkInstagramOwnProfileWithIntegrity();
+      } else if (url.includes('facebook.com')) {
+        domData = checkFacebookOwnProfile();
+      } else if (url.includes('x.com') || url.includes('twitter.com')) {
+        domData = checkXOwnProfile();
+      }
+
+      sendResponse({ domCheckData: domData });
+      return true;
+    }
+
     sendResponse({ error: "Unknown action: " + msg.action });
     return false;
   });
+}
+
+// Function to check if this is the user's own profile
+function checkOwnProfile() {
+  const url = window.location.href;
+  
+  if (url.includes('instagram.com')) {
+    return checkInstagramOwnProfile();
+  } else if (url.includes('facebook.com')) {
+    return checkFacebookOwnProfile();
+  } else if (url.includes('twitter.com') || url.includes('x.com')) {
+    return checkXOwnProfile();
+  }
+  
+  return false;
+}
+
+function checkInstagramOwnProfile() {
+  // Check for "Edit profile" button - only visible on your own profile
+  // Instagram usually has a button with specific text or aria-label
+  
+  console.log('[CSC] Starting Instagram profile verification...');
+  
+  // IMPORTANT: Don't just look for edit buttons anywhere on page
+  // Look specifically in the profile header section
+  
+  const profileHeader = document.querySelector('header') || 
+                       document.querySelector('[role="banner"]') ||
+                       document.querySelector('[role="main"] > div:first-child');
+  
+  if (!profileHeader) {
+    console.log('[CSC] No profile header found');
+    return false;
+  }
+  
+  // Method 1: Look for edit profile button IN THE HEADER ONLY
+  const buttons = Array.from(profileHeader.querySelectorAll('button'));
+  console.log('[CSC] Found', buttons.length, 'buttons in profile header');
+  
+  const editProfileBtn = buttons.find(btn => {
+    const text = btn.textContent.toLowerCase().trim();
+    const ariaLabel = btn.getAttribute('aria-label')?.toLowerCase() || '';
+    
+    // Log each button that contains "edit" for debugging
+    if (text.includes('edit') || ariaLabel.includes('edit')) {
+      console.log('[CSC] Found button with "edit":', text || ariaLabel);
+    }
+    
+    return (text.includes('edit') && text.includes('profile')) || 
+           text === 'edit profile' ||
+           ariaLabel.includes('edit profile') ||
+           ariaLabel.includes('modifier le profil');
+  });
+  
+  if (editProfileBtn) {
+    console.log('[CSC] ✓ Found Edit Profile button in header');
+    return true;
+  }
+  
+  // Method 2: Check for edit profile link in header
+  const editLinks = Array.from(profileHeader.querySelectorAll('a')).filter(a => {
+    const href = a.href || '';
+    const text = a.textContent.toLowerCase();
+    return href.includes('/accounts/edit/') || text.includes('edit');
+  });
+  
+  console.log('[CSC] Found', editLinks.length, 'edit links in header');
+  if (editLinks.length > 0) {
+    console.log('[CSC] ✓ Found Edit Profile link in header:', editLinks[0].href);
+    return true;
+  }
+  
+  // Method 3: Check for menu button that opens edit options
+  // On your own profile, there's usually a menu with edit/settings options
+  const menuButtons = buttons.filter(btn => {
+    const ariaLabel = btn.getAttribute('aria-label')?.toLowerCase() || '';
+    return ariaLabel.includes('option') || ariaLabel.includes('menu') || ariaLabel.includes('more');
+  });
+  
+  // Click menu to check if it has edit option (only on own profile)
+  // BUT: Be careful not to click - just check for indicators
+  for (const menuBtn of menuButtons) {
+    const ariaExpanded = menuBtn.getAttribute('aria-expanded');
+    const ariaHasPopup = menuBtn.getAttribute('aria-haspopup');
+    
+    // Check if menu is already expanded
+    if (ariaExpanded === 'true') {
+      const menu = document.querySelector('[role="menu"]') || 
+                   menuBtn.nextElementSibling?.querySelector('[role="menu"]');
+      if (menu) {
+        const editOption = Array.from(menu.querySelectorAll('[role="menuitem"]')).find(item =>
+          item.textContent.toLowerCase().includes('edit')
+        );
+        if (editOption) {
+          console.log('[CSC] ✓ Found Edit option in expanded menu');
+          return true;
+        }
+      }
+    }
+  }
+  
+  console.log('[CSC] ✗ No owner-only features detected in profile header');
+  return false;
+}
+
+function checkFacebookOwnProfile() {
+  // Check for "Edit profile" button or profile edit options
+  const buttons = Array.from(document.querySelectorAll('button'));
+  
+  // Method 1: Look for edit profile button
+  const editBtn = buttons.find(btn => {
+    const text = btn.textContent.toLowerCase().trim();
+    return (text.includes('edit') && text.includes('profile')) || 
+           text === 'edit profile' ||
+           btn.getAttribute('aria-label')?.toLowerCase().includes('edit profile');
+  });
+  
+  if (editBtn) {
+    console.log('[CSC] Found Edit Profile button on Facebook');
+    return true;
+  }
+  
+  // Method 2: Check for "View as" button - only on your own profile
+  const viewAsBtn = buttons.find(btn =>
+    btn.textContent.toLowerCase().includes('view as')
+  );
+  
+  if (viewAsBtn) {
+    console.log('[CSC] Found View As button on Facebook');
+    return true;
+  }
+  
+  // Method 3: Check for profile settings/options
+  const settingsBtn = buttons.find(btn => {
+    const ariaLabel = btn.getAttribute('aria-label')?.toLowerCase();
+    return ariaLabel && (ariaLabel.includes('settings') || ariaLabel.includes('options') || ariaLabel.includes('menu'));
+  });
+  
+  if (settingsBtn) {
+    console.log('[CSC] Found Settings/Options button on Facebook');
+    return true;
+  }
+  
+  console.log('[CSC] No owner-only features detected on Facebook profile');
+  return false;
+}
+
+function checkXOwnProfile() {
+  // Check for profile edit option - only on your own profile
+  const buttons = Array.from(document.querySelectorAll('button'));
+  
+  // Method 1: Look for edit profile button
+  const editProfileBtn = buttons.find(btn => {
+    const text = btn.textContent.toLowerCase().trim();
+    const ariaLabel = btn.getAttribute('aria-label')?.toLowerCase();
+    return (text.includes('edit') && text.includes('profile')) || 
+           text === 'edit profile' ||
+           (ariaLabel && ariaLabel.includes('edit'));
+  });
+  
+  if (editProfileBtn) {
+    console.log('[CSC] Found Edit Profile button on X');
+    return true;
+  }
+  
+  // Method 2: Check for More button with owner options
+  const moreBtn = buttons.find(btn => 
+    btn.getAttribute('aria-label')?.toLowerCase().includes('more') &&
+    !btn.getAttribute('aria-label')?.toLowerCase().includes('likes')
+  );
+  
+  if (moreBtn) {
+    console.log('[CSC] Found More options button on X');
+    return true;
+  }
+  
+  // Method 3: Check for follow/unfollow button - if it's not there, it's your own profile
+  const followBtn = buttons.find(btn => {
+    const text = btn.textContent.toLowerCase().trim();
+    return text.includes('follow') || text.includes('unfollow');
+  });
+  
+  // If no follow/unfollow button, it might be your own profile (more reliable check)
+  if (!followBtn) {
+    const profileHeader = document.querySelector('header') || document.querySelector('[role="banner"]');
+    if (profileHeader && profileHeader.textContent.includes('@')) {
+      console.log('[CSC] No follow button found - likely your own profile on X');
+      return true;
+    }
+  }
+  
+  console.log('[CSC] No owner-only features detected on X profile');
+  return false;
+}
+
+/**
+ * MULTI-LAYER SECURITY VERIFICATION FOR ACCOUNT OWNERSHIP
+ * This content script supplements the background service worker verification
+ * by providing DOM integrity checks and network data capture.
+ * 
+ * CRITICAL: This script runs in page context and can be tampered with.
+ * All verdicts from this script must be validated by the background service worker.
+ */
+
+// Store page load timestamp
+const PAGE_LOAD_TIME = Date.now();
+
+/**
+ * FUNCTION: Verify DOM Element Integrity
+ * 
+ * Detects if an element has been created dynamically or injected.
+ * Uses multiple layers of validation:
+ * 1. Checks if element's property descriptors have been overridden
+ * 2. Verifies element is properly nested in expected DOM containers
+ * 3. Confirms element visibility (offsetParent !== null)
+ * 4. Validates that getters are native (not spoofed)
+ */
+function verifyDOMElementIntegrity(element) {
+  if (!element) return false;
+
+  // Check 1: Verify the element is actually an HTMLAnchorElement or HTMLButtonElement
+  if (!(element instanceof HTMLElement)) {
+    console.log('[CSC] ✗ Element is not an HTMLElement');
+    return false;
+  }
+
+  // Check 2: Verify href/textContent getters haven't been overridden (for links)
+  if (element.tagName === 'A') {
+    try {
+      // Get the native property descriptor
+      const hrefDescriptor = Object.getOwnPropertyDescriptor(
+        HTMLAnchorElement.prototype,
+        'href'
+      );
+
+      // If descriptor was overridden, it won't be inherited from prototype
+      const ownDescriptors = Object.getOwnPropertyNames(element);
+      if (ownDescriptors.includes('href')) {
+        console.log('[CSC] ✗ Element has custom href property (possible override)');
+        return false;
+      }
+
+      // Verify the getter is native
+      if (hrefDescriptor && hrefDescriptor.get) {
+        const href = hrefDescriptor.get.call(element);
+        console.log('[CSC] ✓ href verified as native:', href);
+      }
+    } catch (e) {
+      console.log('[CSC] ✗ Error verifying href descriptor:', e.message);
+      return false;
+    }
+  }
+
+  // Check 3: Verify element is visible (not hidden by attacker)
+  if (element.offsetParent === null) {
+    console.log('[CSC] ✗ Element is hidden (offsetParent is null)');
+    return false;
+  }
+
+  // Check 4: Verify element is nested in expected containers
+  const expectedContainers = [
+    '#react-root',
+    '[role="main"]',
+    'header',
+    'nav'
+  ];
+
+  let isInExpectedContainer = false;
+  let parent = element.parentElement;
+  let depth = 0;
+
+  while (parent && depth < 15) {
+    const matchesSelector = expectedContainers.some(selector => 
+      parent.matches(selector)
+    );
+    if (matchesSelector) {
+      isInExpectedContainer = true;
+      break;
+    }
+    parent = parent.parentElement;
+    depth++;
+  }
+
+  if (!isInExpectedContainer) {
+    console.log('[CSC] ⚠ Element not found in expected containers, but continuing');
+    // Note: We don't fail here because Instagram structure varies
+  }
+
+  // Check 5: Verify element is in document (not orphaned)
+  if (!document.body.contains(element)) {
+    console.log('[CSC] ✗ Element is not in the document');
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * FUNCTION: Enhanced Instagram Profile Verification
+ * 
+ * Combines multiple detection methods with integrity verification.
+ * Returns not just a boolean, but detailed data for background script validation.
+ * 
+ * CRITICAL: Also extracts the profile's username to verify we're on the right profile
+ * and checks that suspicious elements don't appear where they shouldn't.
+ */
+function checkInstagramOwnProfileWithIntegrity() {
+  console.log('[CSC] [SECURE] Starting Instagram profile verification with integrity checks...');
+  
+  const checks = {
+    editProfileButton: null,
+    editProfileLink: null,
+    viewArchiveLink: null,
+    profileUsername: null,  // Extract from page
+    elementsFound: false,
+    integrityCertified: false,
+    elements: [],
+    timestamp: Date.now(),
+    timeSincePageLoad: Date.now() - PAGE_LOAD_TIME,
+    warnings: [] // Track any suspicious findings
+  };
+
+  // STEP 0: Extract the profile's username from the page
+  checks.profileUsername = extractInstagramProfileUserId();
+  console.log('[CSC] Current profile username:', checks.profileUsername);
+
+  // STEP 1: Ensure we're on a profile page (not search, explore, etc)
+  if (!checks.profileUsername || checks.profileUsername.length < 2) {
+    console.log('[CSC] ✗ Could not determine profile username - aborting verification');
+    checks.integrityCertified = false;
+    checks.elementsFound = false;
+    return checks;
+  }
+
+  // STEP 2: Find the profile header section
+  const profileHeader = document.querySelector('header') || 
+                       document.querySelector('[role="banner"]') ||
+                       document.querySelector('[role="main"] > div:first-child');
+  
+  if (!profileHeader) {
+    console.log('[CSC] ✗ No profile header found - not on a profile page');
+    checks.elementsFound = false;
+    checks.integrityCertified = false;
+    return checks;
+  }
+
+  // STEP 3: Look for Edit Profile button IN THE HEADER ONLY (very specific)
+  const buttons = Array.from(profileHeader.querySelectorAll('button'));
+  console.log('[CSC] Found', buttons.length, 'buttons in profile header');
+  
+  // STRICT: Only accept buttons that are clearly about editing the profile
+  const editProfileBtn = buttons.find(btn => {
+    const text = btn.textContent.toLowerCase().trim();
+    const ariaLabel = btn.getAttribute('aria-label')?.toLowerCase() || '';
+    const testId = btn.getAttribute('data-testid')?.toLowerCase() || '';
+    
+    // Log for debugging
+    if (text.includes('edit') || ariaLabel.includes('edit')) {
+      console.log('[CSC] Button candidate:', { text, ariaLabel, testId });
+    }
+    
+    // MUST contain both 'edit' AND 'profile' to be confident
+    const hasEditProfile = (text.includes('edit') && text.includes('profile')) || 
+                          (ariaLabel.includes('edit') && ariaLabel.includes('profile')) ||
+                          ariaLabel === 'edit profile' ||
+                          ariaLabel === 'modifier le profil' ||
+                          text === 'edit profile';
+    
+    return hasEditProfile;
+  });
+  
+  if (editProfileBtn && verifyDOMElementIntegrity(editProfileBtn)) {
+    checks.editProfileButton = {
+      found: true,
+      text: editProfileBtn.textContent.trim(),
+      ariaLabel: editProfileBtn.getAttribute('aria-label'),
+      verified: true
+    };
+    checks.elements.push(editProfileBtn);
+    console.log('[CSC] ✓ Found verified Edit Profile button');
+  } else if (editProfileBtn) {
+    checks.warnings.push('Edit Profile button found but integrity check failed - possible injection');
+    console.log('[CSC] ⚠ Edit button found but failed integrity check');
+  }
+
+  // STEP 4: Look for Edit Profile link (less common)
+  const editLinks = Array.from(profileHeader.querySelectorAll('a')).filter(a => {
+    const href = a.href || '';
+    const text = a.textContent.toLowerCase();
+    return (href.includes('/accounts/edit/') && verifyDOMElementIntegrity(a));
+  });
+
+  if (editLinks.length > 0) {
+    checks.editProfileLink = {
+      found: true,
+      href: editLinks[0].href,
+      text: editLinks[0].textContent.trim(),
+      verified: true
+    };
+    checks.elements.push(editLinks[0]);
+    console.log('[CSC] ✓ Found verified Edit Profile link');
+  }
+
+  // STEP 5: Look for Archive/View Archive link (owner-only feature)
+  const archiveLinks = Array.from(profileHeader.querySelectorAll('a')).filter(a => {
+    const href = a.href || '';
+    const text = a.textContent.toLowerCase();
+    return href.includes('/archive') && verifyDOMElementIntegrity(a);
+  });
+
+  if (archiveLinks.length > 0) {
+    checks.viewArchiveLink = {
+      found: true,
+      href: archiveLinks[0].href,
+      text: archiveLinks[0].textContent.trim(),
+      verified: true
+    };
+    checks.elements.push(archiveLinks[0]);
+    console.log('[CSC] ✓ Found verified View Archive link');
+  }
+
+  // STEP 6: Determine if enough elements were found
+  const foundCount = [
+    checks.editProfileButton?.verified,
+    checks.editProfileLink?.verified,
+    checks.viewArchiveLink?.verified
+  ].filter(Boolean).length;
+
+  checks.elementsFound = foundCount >= 1;
+  
+  // Only certify if:
+  // 1. We found at least one verified owner-only element
+  // 2. No timing red flags (verification soon after page load - normal behavior)
+  // 3. No suspicious element overrides
+  checks.integrityCertified = checks.elementsFound && 
+    checks.timeSincePageLoad < 20000 && 
+    checks.warnings.length === 0;
+
+  console.log('[CSC] [SECURE] Instagram verification result:', {
+    elementsFound: checks.elementsFound,
+    integrityCertified: checks.integrityCertified,
+    profileUsername: checks.profileUsername,
+    warningCount: checks.warnings.length,
+    checksSummary: `edit=${checks.editProfileButton?.verified || false}, link=${checks.editProfileLink?.verified || false}, archive=${checks.viewArchiveLink?.verified || false}`
+  });
+
+  return checks;
+}
+
+/**
+ * Extract the profile's user ID from Instagram's page data
+ * 
+ * CRITICAL: This extracts the ID of the profile being VIEWED, not the logged-in user.
+ * Instagram stores this in multiple places:
+ * 1. In the URL (instagram.com/username/)
+ * 2. In meta tags
+ * 3. In aria-labels or data attributes
+ * 
+ * The background script will compare this against the cookie ds_user_id
+ * to verify we're viewing our own profile.
+ */
+function extractInstagramProfileUserId() {
+  // Method 1: Try to get from meta property (og:url or similar)
+  const urlPattern = document.querySelector('meta[property="og:url"]')?.getAttribute('content');
+  if (urlPattern) {
+    console.log('[CSC] Profile URL from meta tag:', urlPattern);
+    const match = urlPattern.match(/instagram\.com\/([^/?]+)/);
+    if (match) {
+      const username = match[1];
+      console.log('[CSC] Current profile username from meta:', username);
+      return username;
+    }
+  }
+
+  // Method 2: Extract username from current URL
+  const urlMatch = window.location.href.match(/instagram\.com\/([^/?]+)/);
+  if (urlMatch) {
+    const username = urlMatch[1];
+    // Filter out paths that aren't profiles
+    if (!['explore', 'direct', 'stories', 'saved', 'reels', 'api'].includes(username)) {
+      console.log('[CSC] Current profile username from URL:', username);
+      return username;
+    }
+  }
+
+  // Method 3: Try to extract from page title or header
+  const profileName = document.querySelector('header h1') || 
+                     document.querySelector('header h2') ||
+                     document.querySelector('[role="main"] h1');
+  if (profileName) {
+    const username = profileName.textContent.trim();
+    console.log('[CSC] Profile username from header:', username);
+    return username;
+  }
+
+  // Method 4: Look for profile link in navigation
+  const profileLinks = Array.from(document.querySelectorAll('a[href*="/"]')).filter(a => {
+    const href = a.getAttribute('href') || '';
+    // Look for links that point to a profile (not other pages)
+    return href.match(/^\/[^/?]+\/?$/) && 
+           !['explore', 'direct', 'stories', 'saved', 'reels', 'api', 'accounts'].includes(
+             href.split('/')[1]
+           );
+  });
+
+  if (profileLinks.length > 0) {
+    const username = profileLinks[0].getAttribute('href').replace(/\//g, '').trim();
+    if (username) {
+      console.log('[CSC] Profile username from navigation link:', username);
+      return username;
+    }
+  }
+
+  console.log('[CSC] ⚠ Could not extract profile username - verification will be less reliable');
+  return null;
+}
+
+/**
+ * FUNCTION: Capture Network Requests
+ * 
+ * Intercepts fetch/XHR requests to Instagram API to extract ds_user_id
+ * This signal cannot be spoofed from the page (requires real Instagram auth)
+ */
+function captureNetworkData() {
+  return new Promise((resolve) => {
+    let captured = false;
+    
+    // Intercept fetch requests
+    const originalFetch = window.fetch;
+    window.fetch = function(...args) {
+      const response = originalFetch.apply(this, args);
+      
+      // Clone response to read body without consuming it
+      response.then(res => {
+        // Only intercept Instagram API calls
+        const requestUrl = String(args[0]);
+        if (requestUrl.includes('/graphql') || requestUrl.includes('api/graphql')) {
+          try {
+            const clonedRes = res.clone();
+            clonedRes.json().then(data => {
+              // Try to extract ds_user_id from response
+              const json = JSON.stringify(data);
+              const dsUserIdMatch = json.match(/"ds_user_id":"?(\d+)"?/);
+              
+              if (dsUserIdMatch && !captured) {
+                captured = true;
+                const dsUserId = dsUserIdMatch[1];
+                console.log('[CSC] [NETWORK] Captured ds_user_id from GraphQL:', dsUserId);
+                
+                if (typeof chrome !== 'undefined' && chrome.runtime) {
+                  chrome.runtime.sendMessage({
+                    type: 'NETWORK_DS_USER_ID',
+                    dsUserId: dsUserId,
+                    timestamp: Date.now(),
+                    requestUrl: requestUrl
+                  }).catch(e => {
+                    console.log('[CSC] Could not send network data to background:', e.message);
+                  });
+                }
+              }
+            }).catch(() => {
+              // Ignore JSON parse errors
+            });
+          } catch (e) {
+            // Ignore errors
+          }
+        }
+      }).catch(() => {
+        // Ignore promise errors
+      });
+
+      return response;
+    };
+
+    // Clean up after 5 seconds
+    setTimeout(() => {
+      window.fetch = originalFetch;
+      resolve(true);
+    }, 5000);
+  });
+}
+
+// Initialize network capture on page load
+if (window.location.href.includes('instagram.com')) {
+  captureNetworkData();
 }

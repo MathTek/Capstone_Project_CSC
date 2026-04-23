@@ -17,8 +17,10 @@
   import { AuthStorageService } from "../services/authStorage.js";
   import Auth from "../components/Auth.svelte";
   import ScoreDisplay from "../components/ScoreDisplay.svelte";
+  import VerifyAccount from "../components/VerifyAccount.svelte";
   import { scanStores, resetScanStores } from "../services/scanStores.js";
 
+  const browserAPI = (typeof globalThis !== 'undefined' && (globalThis.browser || globalThis.chrome)) || undefined;
   const { status, loading, bio, posts, highlights, profileInfo, results, numberOfPII, pii_types_number } = scanStores;
 
   const hasScanned      = writable(false);
@@ -26,6 +28,7 @@
   const isOnFacebook    = writable(false);
   const isOnX           = writable(false);
   const isAuthenticated = writable(false);
+  const isVerified      = writable(false);
   const userInfo        = writable(null);
 
   async function checkPage() {
@@ -94,15 +97,21 @@
 
 
   function handleNavigateToProfile() {
-    chrome.tabs.create({ url: 'https://www.instagram.com' });
+    browserAPI.tabs.create({ url: 'https://www.instagram.com' });
   }
 
   async function handleLogout() {
     await logout();
     isAuthenticated.set(false);
+    isVerified.set(false);
     userInfo.set(null);
     hasScanned.set(false);
     resetScanStores();
+  }
+
+  function handleVerifySuccess() {
+    isVerified.set(true);
+    checkPage();
   }
 
   onMount(async () => {
@@ -128,6 +137,11 @@
     isAuthenticated={$isAuthenticated}
     onLogin={handleLogin}
     onSignup={handleSignup}
+  />
+{:else if !$isVerified}
+  <VerifyAccount 
+    userInfo={$userInfo}
+    onVerifySuccess={handleVerifySuccess}
   />
 {:else}
   <div class="w-full max-w-md mx-auto min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 p-3">
