@@ -11,7 +11,6 @@ const SCRIPT_DELAY    = 1_500;
 const { sendPIIList, aggregatePII, uniquePIITypes } = createSocialServiceHelpers({
   backendUrl: BACKEND_URL,
   requestTimeout: REQUEST_TIMEOUT,
-  sourceLabel: 'facebookService'
 });
 
 async function processFacebookProfileResponse(response, stores) {
@@ -36,7 +35,7 @@ async function processFacebookProfileResponse(response, stores) {
   pii_types_number.set(uniquePIITypes(currentResults));
 
   const piiList = aggregatePII(currentResults);
-  const score   = await sendPIIList(piiList);
+  const score   = await sendPIIList(piiList, "Facebook");
 
   if (score !== null) {
     profileInfo.update(info => ({ ...info, last_score: score }));
@@ -48,6 +47,7 @@ async function processFacebookProfileResponse(response, stores) {
     following:  response.following,
     postsCount: response.postsCount ?? postsData.length,
     url:        response.url,
+    last_score: score
   });
 
   const bioLabel = response.bio ? 'Bio' : 'No Bio';
