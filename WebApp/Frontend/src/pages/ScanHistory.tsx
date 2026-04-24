@@ -87,8 +87,12 @@ export default function ScanHistory() {
         lastScan: scanHistory.length > 0 ? scanHistory[scanHistory.length - 1].created_at : null,
     };
 
+    const normalizePlatform = (platform: string | null | undefined) => platform?.trim().toLowerCase() || '';
+
+    const getScanPlatform = (scan: any) => scan.media || scan.platform || null;
+
     const filteredScans = selectedPlatform 
-        ? scanHistory.filter(scan => scan.media === selectedPlatform)
+        ? scanHistory.filter(scan => normalizePlatform(getScanPlatform(scan)) === normalizePlatform(selectedPlatform))
         : scanHistory;
 
     const openDeleteModal = (scanId: number) => {
@@ -239,6 +243,20 @@ export default function ScanHistory() {
                                     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L2.25 2.25h6.908l4.265 5.638L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117z" className="fill-gray-900 dark:fill-white"/>
                                   </svg>
                                 </button>
+                                                                <button
+                                                                    onClick={() => setSelectedPlatform('Facebook')}
+                                                                    className={`p-2 rounded-xl transition-colors flex items-center justify-center ${
+                                                                        selectedPlatform === 'Facebook'
+                                                                            ? 'ring-2 ring-blue-600 bg-white dark:bg-gray-800'
+                                                                            : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                                                    }`}
+                                                                    aria-label="Facebook"
+                                                                    title="Facebook"
+                                                                >
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
+                                                                        <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073c0 6.019 4.388 11.009 10.125 11.927v-8.437H7.078v-3.49h3.047V9.414c0-3.017 1.792-4.683 4.533-4.683 1.313 0 2.686.235 2.686.235v2.963H15.83c-1.491 0-1.956.928-1.956 1.88v2.264h3.328l-.532 3.49h-2.796V24C19.612 23.082 24 18.092 24 12.073z" className="fill-blue-600" />
+                                                                    </svg>
+                                                                </button>
                             </div>
                             <span className="text-sm text-gray-500 dark:text-gray-400">
                                 {filteredScans.length} scan{filteredScans.length !== 1 ? 's' : ''} found
@@ -364,10 +382,10 @@ export default function ScanHistory() {
                                                     <span>{formatDate(scan.created_at)}</span>
                                                 </div>
                                                 
-                                                {scan.platform && (
+                                                {getScanPlatform(scan) && (
                                                     <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                                                         <Shield className="w-4 h-4" />
-                                                        <span>{scan.platform}</span>
+                                                        <span>{getScanPlatform(scan)}</span>
                                                     </div>
                                                 )}
                                             </div>
