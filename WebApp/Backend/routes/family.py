@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 from models import User, FamilyPool
+from auth import verify_token
 
 
 router = APIRouter(tags=["family"])
@@ -22,7 +23,7 @@ class AcceptFamilyMemberRequest(BaseModel):
 
 
 @router.post("/create_family_member")
-async def create_family_member(payload: FamilyPoolCreate, db: Session = Depends(get_db), request: Request = None):
+async def create_family_member(payload: FamilyPoolCreate, token_data: dict = Depends(verify_token), db: Session = Depends(get_db), request: Request = None):
     member = db.query(User).filter(User.username == payload.member_username).first()
     if not member:
         raise HTTPException(status_code=404, detail="Member user not found")
@@ -48,7 +49,7 @@ async def create_family_member(payload: FamilyPoolCreate, db: Session = Depends(
 
 
 @router.get("/get_family_pool_by_userid/{user_id}")
-def get_family_pool_by_userid(user_id: int, db: Session = Depends(get_db)):
+def get_family_pool_by_userid(user_id: int, token_data: dict = Depends(verify_token), db: Session = Depends(get_db)):
     family_pool = db.query(FamilyPool).filter(FamilyPool.chief_id == user_id).all()
     if not family_pool:
         family_pool = db.query(FamilyPool).filter(FamilyPool.member_id == user_id).all()
@@ -64,14 +65,14 @@ def get_family_pool_by_userid(user_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/get_user_by_id/{user_id}")
-def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
+def get_user_by_id(user_id: int, token_data: dict = Depends(verify_token), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return {"username": user.username}
 
 @router.post("/accept_family_member_request")
-async def accept_family_member_request(payload: AcceptFamilyMemberRequest, db: Session = Depends(get_db), request: Request = None):
+async def accept_family_member_request(payload: AcceptFamilyMemberRequest, token_data: dict = Depends(verify_token), db: Session = Depends(get_db), request: Request = None):
     family_member = db.query(FamilyPool).filter(FamilyPool.id == payload.family_pool_id and FamilyPool.member_id == payload.user_id).first()
     if not family_member:
         raise HTTPException(status_code=404, detail="Family member not found")
@@ -85,7 +86,7 @@ async def accept_family_member_request(payload: AcceptFamilyMemberRequest, db: S
     return {"msg": "Family member request accepted"}
 
 @router.delete("/remove_family_member/{family_pool_id}")
-async def remove_family_member(family_pool_id: int, db: Session = Depends(get_db), request: Request = None):
+async def remove_family_member(family_pool_id: int, token_data: dict = Depends(verify_token), db: Session = Depends(get_db), request: Request = None):
     context = (await request.json()).get("context", "unknown") if request else "unknown"
     member_removed = db.query(FamilyPool).filter(FamilyPool.id == family_pool_id).first()
     db.query(FamilyPool).filter(FamilyPool.id == family_pool_id).delete()

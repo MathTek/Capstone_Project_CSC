@@ -1,4 +1,4 @@
-/// <reference types="chrome"/>
+/// <reference types="browser"/>
 
 /**
  * ACCOUNT VERIFICATION SECURITY ARCHITECTURE
@@ -17,7 +17,7 @@ const pageLoadRegistry = {};
 const networkRequestRegistry = {};
 
 // Track when a tab is updated to store the exact reload time
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'loading') {
     // Page is reloading
     pageLoadRegistry[tabId] = {
@@ -36,7 +36,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 });
 
 // Clean up when tabs close
-chrome.tabs.onRemoved.addListener((tabId) => {
+browser.tabs.onRemoved.addListener((tabId) => {
   delete pageLoadRegistry[tabId];
   delete networkRequestRegistry[tabId];
 });
@@ -56,7 +56,7 @@ async function captureNetworkSignal(tabId, url) {
     const messageListener = (message, sender) => {
       if (sender.tabId === tabId && message.type === 'NETWORK_DS_USER_ID') {
         clearTimeout(timeout);
-        chrome.runtime.onMessage.removeListener(messageListener);
+        browser.runtime.onMessage.removeListener(messageListener);
         
         networkRequestRegistry[tabId] = {
           dsUserId: message.dsUserId,
@@ -74,11 +74,11 @@ async function captureNetworkSignal(tabId, url) {
       }
     };
 
-    chrome.runtime.onMessage.addListener(messageListener);
+    browser.runtime.onMessage.addListener(messageListener);
     
     // Ask content script to capture network data
     try {
-      chrome.tabs.sendMessage(tabId, {
+      browser.tabs.sendMessage(tabId, {
         action: 'captureNetworkData'
       }, { frameId: 0 }).catch(() => {
         // Content script not ready yet
@@ -99,7 +99,7 @@ async function captureCookieSignal(tabUrl) {
     // Extract domain from URL
     const domain = new URL(tabUrl).hostname;
     
-    chrome.cookies.get({ url: tabUrl, name: 'ds_user_id' }, (cookie) => {
+    browser.cookies.get({ url: tabUrl, name: 'ds_user_id' }, (cookie) => {
       if (cookie && cookie.value) {
         resolve({
           source: 'cookie',
@@ -161,7 +161,6 @@ function validateTimingSignal(tabId, currentTime) {
   const MAX_DELAY_MS = 15000; // Must verify within 15 seconds of page load
 
   if (timeSinceLoad > MAX_DELAY_MS) {
-    console.log(`[CSC-BG] Verification attempted ${timeSinceLoad}ms after page load - REJECTED (max: ${MAX_DELAY_MS}ms)`);
     return null;
   }
 
@@ -210,7 +209,7 @@ async function performMultiSignalVerification(tabId, tabUrl, domCheckData) {
 
   console.log(`[CSC-BG] Collected ${signals.length} signals:`, signals.map(s => s.source));
 
-  // ❌ REJECT if insufficient signals
+  //  REJECT if insufficient signals
   if (signals.length < 2) {
     console.log('[CSC-BG] ✗ REJECTED: Less than 2 signals available');
     return {
@@ -220,9 +219,9 @@ async function performMultiSignalVerification(tabId, tabUrl, domCheckData) {
     };
   }
 
-  // ✅ RULE 1: DOM + Cookie + Timing (strongest combination)
+  // RULE 1: DOM + Cookie + Timing (strongest combination)
   if (domSignal && cookieSignal && timingSignal) {
-    console.log('[CSC-BG] ✅ VERIFIED: DOM + Cookie + Timing (3 signals)');
+    console.log('[CSC-BG]  VERIFIED: DOM + Cookie + Timing (3 signals)');
     return {
       isVerified: true,
       reason: 'dom_cookie_timing',
@@ -230,9 +229,9 @@ async function performMultiSignalVerification(tabId, tabUrl, domCheckData) {
     };
   }
 
-  // ✅ RULE 2: DOM + Network + Timing
+  //  RULE 2: DOM + Network + Timing
   if (domSignal && networkSignal && timingSignal) {
-    console.log('[CSC-BG] ✅ VERIFIED: DOM + Network + Timing (3 signals)');
+    console.log('[CSC-BG]  VERIFIED: DOM + Network + Timing (3 signals)');
     return {
       isVerified: true,
       reason: 'dom_network_timing',
@@ -240,9 +239,9 @@ async function performMultiSignalVerification(tabId, tabUrl, domCheckData) {
     };
   }
 
-  // ✅ RULE 3: Network + Timing (authenticated API request)
+  //  RULE 3: Network + Timing (authenticated API request)
   if (networkSignal && timingSignal) {
-    console.log('[CSC-BG] ✅ VERIFIED: Network + Timing');
+    console.log('[CSC-BG]  VERIFIED: Network + Timing');
     return {
       isVerified: true,
       reason: 'network_and_timing',
@@ -250,9 +249,9 @@ async function performMultiSignalVerification(tabId, tabUrl, domCheckData) {
     };
   }
 
-  // ✅ RULE 4: Cookie + Network (both auth sources agree)
+  //  RULE 4: Cookie + Network (both auth sources agree)
   if (cookieSignal && networkSignal) {
-    console.log('[CSC-BG] ✅ VERIFIED: Cookie + Network');
+    console.log('[CSC-BG]  VERIFIED: Cookie + Network');
     return {
       isVerified: true,
       reason: 'cookie_and_network',
@@ -260,7 +259,7 @@ async function performMultiSignalVerification(tabId, tabUrl, domCheckData) {
     };
   }
 
-  // ❌ REJECT: Cookie + Timing alone (without DOM or Network)
+  //  REJECT: Cookie + Timing alone (without DOM or Network)
   // = You are logged in but Edit button NOT found = NOT your profile
   if (cookieSignal && timingSignal && !domSignal && !networkSignal) {
     console.log('[CSC-BG] ✗ REJECTED: Logged in but NO Edit button (viewing someone else\'s profile)');
@@ -271,7 +270,7 @@ async function performMultiSignalVerification(tabId, tabUrl, domCheckData) {
     };
   }
 
-  // ❌ REJECT: DOM + Timing alone (without Cookie or Network)
+  //  REJECT: DOM + Timing alone (without Cookie or Network)
   // = Edit button found but not authenticated = INJECTION
   if (domSignal && timingSignal && !cookieSignal && !networkSignal) {
     console.log('[CSC-BG] ✗ REJECTED: Edit button found but not authenticated (DOM injection)');
@@ -282,7 +281,7 @@ async function performMultiSignalVerification(tabId, tabUrl, domCheckData) {
     };
   }
 
-  // ❌ REJECT: Default - insufficient independent signals
+  //  REJECT: Default - insufficient independent signals
   console.log('[CSC-BG] ✗ REJECTED: Insufficient signal combination');
   return {
     isVerified: false,
@@ -290,6 +289,8 @@ async function performMultiSignalVerification(tabId, tabUrl, domCheckData) {
     collected: signals.map(s => s.source)
   };
 }
+
+const browserAPI = (typeof globalThis !== 'undefined' && (globalThis.browser || globalThis.chrome)) || undefined;
 
 /**
  * Extract consensus user ID from multiple signals
@@ -312,13 +313,21 @@ function extractConsensusUserId(signals, domUserId) {
  * MESSAGE HANDLER
  * Receives verification requests from popup and content scripts
  */
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'verifyAccountOwnership') {
     const { tabId, tabUrl, domCheckData } = message;
 
+    if (sender.url && !sender.url.includes('instagram.com')) {
+      sendResponse({
+        isVerified: true,
+        reason: 'not_instagram',
+        details: 'Tab URL is not Instagram, skipping verification'
+      });
+      return true;
+    }
+
     performMultiSignalVerification(tabId, tabUrl, domCheckData)
       .then(result => {
-        console.log('[CSC-BG] Verification result:', result);
         sendResponse(result);
       })
       .catch(error => {
