@@ -210,80 +210,83 @@ async function performMultiSignalVerification(tabId, tabUrl, domCheckData) {
 
   console.log(`[CSC-BG] Collected ${signals.length} signals:`, signals.map(s => s.source));
 
-  // Decision logic
-  if (signals.length === 0) {
+  // ❌ REJECT if insufficient signals
+  if (signals.length < 2) {
+    console.log('[CSC-BG] ✗ REJECTED: Less than 2 signals available');
     return {
       isVerified: false,
-      reason: 'no_signals_available',
-      signals: []
+      reason: 'insufficient_signals',
+      collected: signals.map(s => s.source)
     };
   }
 
-  // PRIMARY CHECK: DOM elements + Cookie + Timing
-  // If edit profile button exists on page + user is logged in + timing is reasonable = OWN PROFILE
-  if (domCheckData?.elementsFound && cookieSignal && timingSignal) {
-    console.log('[CSC-BG] ✓ VERIFIED: DOM elements found + Cookie + Valid timing');
-    console.log('[CSC-BG] User is logged in (has cookie) and profile edit elements visible');
+  // ✅ RULE 1: DOM + Cookie + Timing (strongest combination)
+  if (domSignal && cookieSignal && timingSignal) {
+    console.log('[CSC-BG] ✅ VERIFIED: DOM + Cookie + Timing (3 signals)');
     return {
       isVerified: true,
-      reason: 'dom_and_cookie_and_timing',
-      signals: signals,
-      userId: cookieSignal.dsUserId
+      reason: 'dom_cookie_timing',
+      signals: signals
     };
   }
 
-  // SECONDARY: Network + Timing
-  // If we detected authenticated API requests + timing is good = OWN PROFILE
+  // ✅ RULE 2: DOM + Network + Timing
+  if (domSignal && networkSignal && timingSignal) {
+    console.log('[CSC-BG] ✅ VERIFIED: DOM + Network + Timing (3 signals)');
+    return {
+      isVerified: true,
+      reason: 'dom_network_timing',
+      signals: signals
+    };
+  }
+
+  // ✅ RULE 3: Network + Timing (authenticated API request)
   if (networkSignal && timingSignal) {
-    console.log('[CSC-BG] ✓ VERIFIED: Network request captured + Valid timing');
-    console.log('[CSC-BG] Instagram API requests from authenticated user');
+    console.log('[CSC-BG] ✅ VERIFIED: Network + Timing');
     return {
       isVerified: true,
       reason: 'network_and_timing',
-      signals: signals,
-      userId: networkSignal.dsUserId
+      signals: signals
     };
   }
 
-  // TERTIARY: Cookie + DOM elements + integrity certified
-  // Cookie proves you're logged in, DOM elements prove you're on your profile
-  if (cookieSignal && domCheckData?.elementsFound && domCheckData?.integrityCertified) {
-    console.log('[CSC-BG] ✓ VERIFIED: Cookie + DOM elements (integrity verified) + Recent');
+  // ✅ RULE 4: Cookie + Network (both auth sources agree)
+  if (cookieSignal && networkSignal) {
+    console.log('[CSC-BG] ✅ VERIFIED: Cookie + Network');
     return {
       isVerified: true,
-      reason: 'cookie_and_dom_integrity',
-      signals: signals,
-      userId: cookieSignal.dsUserId
+      reason: 'cookie_and_network',
+      signals: signals
     };
   }
 
-  // If DOM elements exist but no cookie/network = SUSPICIOUS INJECTION
-  if (domCheckData?.elementsFound && !cookieSignal && !networkSignal) {
-    console.log('[CSC-BG] ✗ REJECTED: DOM elements found but NO authentication signals (likely injected)');
+  // ❌ REJECT: Cookie + Timing alone (without DOM or Network)
+  // = You are logged in but Edit button NOT found = NOT your profile
+  if (cookieSignal && timingSignal && !domSignal && !networkSignal) {
+    console.log('[CSC-BG] ✗ REJECTED: Logged in but NO Edit button (viewing someone else\'s profile)');
     return {
       isVerified: false,
-      reason: 'dom_only_no_auth',
-      details: 'Edit button found but user not logged in - likely DOM injection'
+      reason: 'not_own_profile',
+      details: 'You are logged in, but Edit Profile button not found. This is not your profile.'
     };
   }
 
-  // If we have only DOM but no timing validation = SUSPICIOUS
-  if (domCheckData?.elementsFound && !timingSignal && !networkSignal) {
-    console.log('[CSC-BG] ✗ REJECTED: DOM elements found but timing validation failed (too late for normal verification)');
+  // ❌ REJECT: DOM + Timing alone (without Cookie or Network)
+  // = Edit button found but not authenticated = INJECTION
+  if (domSignal && timingSignal && !cookieSignal && !networkSignal) {
+    console.log('[CSC-BG] ✗ REJECTED: Edit button found but not authenticated (DOM injection)');
     return {
       isVerified: false,
-      reason: 'dom_only_timing_failed',
-      details: 'Possible injection after page load stabilization'
+      reason: 'dom_injection_suspected',
+      details: 'Edit button found but no authentication signals - likely injected'
     };
   }
 
-  // If we reach here, not enough strong signals to verify
-  console.log('[CSC-BG] ✗ REJECTED: Insufficient signals');
-  console.log('[CSC-BG] Dom elements:', domCheckData?.elementsFound, 'Cookie:', !!cookieSignal, 'Network:', !!networkSignal, 'Timing:', !!timingSignal);
+  // ❌ REJECT: Default - insufficient independent signals
+  console.log('[CSC-BG] ✗ REJECTED: Insufficient signal combination');
   return {
     isVerified: false,
     reason: 'insufficient_signals',
-    signals: signals,
     collected: signals.map(s => s.source)
   };
 }
