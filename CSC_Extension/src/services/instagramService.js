@@ -11,7 +11,6 @@ const SCRIPT_DELAY    = 1_500;
 const { sendPIIList, aggregatePII, uniquePIITypes } = createSocialServiceHelpers({
   backendUrl: BACKEND_URL,
   requestTimeout: REQUEST_TIMEOUT,
-  sourceLabel: 'instagramService'
 });
 
 async function processProfileResponse(response, stores) {

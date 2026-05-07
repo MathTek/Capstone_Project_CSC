@@ -84,7 +84,6 @@
       if (success) {
         const authState = await AuthStorageService.getAuthState();
         userInfo.set(authState.userInfo);
-        console.log('Signup success:', userInfo);
         isAuthenticated.set(true);
         checkPage();
       }

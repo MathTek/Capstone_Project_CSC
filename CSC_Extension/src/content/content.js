@@ -734,7 +734,6 @@ function getFacebookPosts() {
     }
   }
 
-  console.log("Posts trouvés:", posts);
   return posts;
 }
 
