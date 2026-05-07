@@ -17,14 +17,26 @@
     verificationMessage = "Verifying your profile...";
     errorDetails = "";
     profileOwnedByUser = false;
+      const tab = await new Promise((resolve) => {
+      browserAPI.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+        resolve(tab);
+      });
+    });
+
+
+    if (!tab.url.includes('instagram.com')) {
+      isVerified = true;
+      profileOwnedByUser = true;
+      verificationMessage = "Done";
+      console.log('[CSC-Verify] Non-Instagram page, skipping verification');
+      setTimeout(() => {
+          onVerifySuccess();
+        }, 1500);
+    } else {
     
     try {
       // Check if user is on a social media page
-      const tab = await new Promise((resolve) => {
-        browserAPI.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-          resolve(tab);
-        });
-      });
+   
 
       const isInstagram = tab.url.includes('instagram.com');
       const isFacebook = tab.url.includes('facebook.com');
@@ -164,8 +176,6 @@
         profileOwnedByUser = true;
         isVerified = true;
         verificationMessage = "✓ Account verified! This is your profile.";
-        console.log('[CSC-Verify] ✓ Profile verification successful via signals:', response.reason);
-        console.log('[CSC-Verify] Signals used:', response.signals?.map(s => s.source).join(', '));
         setTimeout(() => {
           onVerifySuccess();
         }, 1500);
@@ -206,6 +216,7 @@
       
       console.error("[CSC-Verify] Verification error:", error);
     }
+  }
 
     isVerifying = false;
   }

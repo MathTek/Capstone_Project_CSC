@@ -1031,7 +1031,6 @@ function checkXOwnProfile() {
     }
   }
   
-  console.log('[CSC] No owner-only features detected on X profile');
   return false;
 }
 
@@ -1389,8 +1388,8 @@ function captureNetworkData() {
                 const dsUserId = dsUserIdMatch[1];
                 console.log('[CSC] [NETWORK] Captured ds_user_id from GraphQL:', dsUserId);
                 
-                if (typeof chrome !== 'undefined' && chrome.runtime) {
-                  chrome.runtime.sendMessage({
+                if (typeof browser !== 'undefined' && browser.runtime) {
+                  browser.runtime.sendMessage({
                     type: 'NETWORK_DS_USER_ID',
                     dsUserId: dsUserId,
                     timestamp: Date.now(),
